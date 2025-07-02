@@ -10,7 +10,9 @@ import {
   FileText, 
   Settings,
   Bot,
-  Database
+  Database,
+  Brain,
+  Zap
 } from 'lucide-react'
 
 const navigation = [
@@ -37,6 +39,12 @@ const navigation = [
     href: '/dashboard/dify',
     icon: Bot,
     description: 'Conversas, Datasets e IA'
+  },
+  {
+    name: 'Workflows IA',
+    href: '/dashboard/dify/workflows',
+    icon: Brain,
+    description: 'Assistentes e Automações'
   },
   {
     name: 'Integrações Master',
@@ -79,6 +87,11 @@ export function Sidebar() {
                   {item.name === 'Gestão Dify' && (
                     <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
                       ✅
+                    </span>
+                  )}
+                  {item.name === 'Workflows IA' && (
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                      🧠 IA
                     </span>
                   )}
                 </Link>
