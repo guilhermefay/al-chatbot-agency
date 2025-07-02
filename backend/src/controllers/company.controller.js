@@ -192,18 +192,22 @@ const companyController = {
     try {
       const { id } = req.params;
 
-      const { data: session } = await supabase
+      // Buscar a sessão mais recente ao invés de usar .single()
+      const { data: sessions } = await supabase
         .from('whatsapp_sessions')
         .select('*')
         .eq('company_id', id)
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(1);
 
-      if (!session) {
+      if (!sessions || sessions.length === 0) {
         return res.status(404).json({ 
           error: 'WhatsApp session not found',
           hasSession: false 
         });
       }
+
+      const session = sessions[0]; // Pega a mais recente
 
       res.json({
         session,
@@ -285,17 +289,20 @@ const companyController = {
       const { id } = req.params;
       console.log('🔍 DEBUG: Getting WhatsApp status for company:', id);
 
-      const { data: session } = await supabase
+      // Buscar a sessão mais recente ao invés de usar .single()
+      const { data: sessions } = await supabase
         .from('whatsapp_sessions')
         .select('*')
         .eq('company_id', id)
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(1);
 
-      if (!session) {
+      if (!sessions || sessions.length === 0) {
         console.log('❌ DEBUG: No WhatsApp session found');
         return res.status(404).json({ error: 'WhatsApp session not found' });
       }
 
+      const session = sessions[0]; // Pega a mais recente
       console.log('📋 DEBUG: Session found:', session.evolution_instance);
 
       // Get status with QR code from Evolution API using the new method
@@ -319,6 +326,8 @@ const companyController = {
         status: connectionState,
         phone_number: statusData.instance?.profileName || null,
         qr_code: statusData.qr_code || null,
+        session_id: session.id,
+        instance_name: session.evolution_instance,
         raw_status: statusData // Para debug
       });
     } catch (error) {
@@ -354,12 +363,15 @@ const companyController = {
 
       console.log('✅ DEBUG: Company found:', company.name);
 
-      // Verificar se já existe sessão
-      const { data: existingSession } = await supabase
+      // Verificar se já existe sessão (buscar a mais recente)
+      const { data: existingSessions } = await supabase
         .from('whatsapp_sessions')
         .select('*')
         .eq('company_id', id)
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const existingSession = existingSessions && existingSessions.length > 0 ? existingSessions[0] : null;
 
       let instanceName;
       let sessionData;
