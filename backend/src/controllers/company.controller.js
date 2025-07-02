@@ -191,6 +191,7 @@ const companyController = {
   async createWhatsAppSession(req, res) {
     try {
       const { id } = req.params;
+      console.log('🔍 DEBUG: Creating WhatsApp session for company:', id);
 
       // Check if company exists
       const { data: company } = await supabase
@@ -200,16 +201,23 @@ const companyController = {
         .single();
 
       if (!company) {
+        console.log('❌ DEBUG: Company not found:', id);
         return res.status(404).json({ error: 'Company not found' });
       }
 
+      console.log('✅ DEBUG: Company found:', company.name);
+
       // Generate unique instance name
       const instanceName = `company_${id}_${Date.now()}`;
+      console.log('🏷️ DEBUG: Instance name:', instanceName);
 
       // Create instance in Evolution API
+      console.log('🚀 DEBUG: Calling Evolution API createInstance...');
       const evolutionInstance = await evolutionService.createInstance(instanceName, id);
+      console.log('📡 DEBUG: Evolution API response:', evolutionInstance);
 
       // Save session in database
+      console.log('💾 DEBUG: Saving session to database...');
       const { data: session, error } = await supabase
         .from('whatsapp_sessions')
         .insert({
@@ -221,7 +229,12 @@ const companyController = {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.log('❌ DEBUG: Supabase error:', error);
+        throw error;
+      }
+
+      console.log('✅ DEBUG: Session saved:', session.id);
 
       logger.info(`WhatsApp session created for company: ${id}`);
       res.status(201).json({
@@ -229,6 +242,7 @@ const companyController = {
         qr_code: evolutionInstance.qrcode
       });
     } catch (error) {
+      console.log('💥 DEBUG: Full error details:', error);
       logger.error('Error creating WhatsApp session:', error);
       res.status(500).json({ error: 'Failed to create WhatsApp session' });
     }
