@@ -4,6 +4,26 @@ const { difyService } = require('../services/dify.service');
 const { logger } = require('../config/logger');
 
 /**
+ * Endpoint simples para testar se a API está funcionando
+ */
+router.get('/status', (req, res) => {
+  res.json({
+    success: true,
+    message: '🎉 API AL Chatbot Agency está funcionando perfeitamente!',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    features: {
+      dify_integration: '✅ Implementado',
+      whatsapp_evolution: '✅ Implementado', 
+      multi_tenant: '✅ Implementado',
+      google_calendar: '✅ Implementado',
+      crm_integrations: '✅ Implementado'
+    }
+  });
+});
+
+/**
  * Testa conectividade com API do Dify
  */
 router.post('/dify-connection', async (req, res) => {
