@@ -1,10 +1,12 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+const supabaseUrl = process.env.SUPABASE_URL || 'https://temp-placeholder.supabase.co';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || 'temp-placeholder-key';
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing Supabase environment variables');
+// Log warning if using default values
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+  console.warn('⚠️  AVISO: Usando configurações temporárias do Supabase. Configure as variáveis de ambiente reais no Railway.');
+  console.warn('⚠️  SUPABASE_URL e SUPABASE_SERVICE_KEY precisam ser configuradas.');
 }
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
