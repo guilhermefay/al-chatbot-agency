@@ -5,7 +5,6 @@ import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
 import { X, User, CheckCircle, Bot, Key } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
@@ -24,7 +23,6 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }: AddCompanyModalP
     name: '',
     email: '',
     phone: '',
-    plan: 'basic',
     dify_api_key: ''
   });
 
@@ -32,13 +30,12 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }: AddCompanyModalP
 
   const handleNext = () => {
     if (step === 1) {
-      // Validação básica
-      if (!companyData.name || !companyData.email || !companyData.phone) {
-        alert('Preencha todos os campos obrigatórios');
+      if (!companyData.name || !companyData.email) {
+        alert('Preencha nome e email da empresa');
         return;
       }
-      setStep(2);
     }
+    setStep(step + 1);
   };
 
   const handleSubmit = async () => {
@@ -58,7 +55,6 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }: AddCompanyModalP
           name: companyData.name,
           email: companyData.email,
           phone: companyData.phone,
-          plan: companyData.plan,
           status: 'active',
           dify_api_key: companyData.dify_api_key,
           features: {
@@ -91,7 +87,6 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }: AddCompanyModalP
       name: '',
       email: '',
       phone: '',
-      plan: 'basic',
       dify_api_key: ''
     });
     onClose();
@@ -162,25 +157,16 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }: AddCompanyModalP
                 </div>
 
                 <div>
-                  <Label htmlFor="phone">Telefone WhatsApp *</Label>
+                  <Label htmlFor="phone">Telefone WhatsApp (Opcional)</Label>
                   <Input
                     id="phone"
                     value={companyData.phone}
                     onChange={(e) => setCompanyData({...companyData, phone: e.target.value})}
                     placeholder="Ex: 34991533667"
                   />
-                </div>
-
-                <div>
-                  <Label htmlFor="plan">Plano</Label>
-                  <select 
-                    value={companyData.plan}
-                    onChange={(e) => setCompanyData({...companyData, plan: e.target.value})}
-                    className="w-full p-2 border rounded-md"
-                  >
-                    <option value="basic">Básico</option>
-                    <option value="premium">Premium</option>
-                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Será conectado depois na aba Integrações
+                  </p>
                 </div>
               </div>
             )}
@@ -246,19 +232,31 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }: AddCompanyModalP
 
           {/* Footer */}
           <div className="px-6 py-4 border-t bg-gray-50 flex justify-between">
-            <Button variant="secondary" onClick={handleClose}>
-              {step === 3 ? 'Fechar' : 'Cancelar'}
-            </Button>
+            {step > 1 && step < 3 && (
+              <Button variant="outline" onClick={() => setStep(step - 1)}>
+                Voltar
+              </Button>
+            )}
             
-            {step === 1 && (
-              <Button onClick={handleNext}>
-                Próximo →
+            {step < 2 && (
+              <Button onClick={handleNext} className="ml-auto">
+                Próximo
               </Button>
             )}
             
             {step === 2 && (
-              <Button onClick={handleSubmit} disabled={loading}>
+              <Button 
+                onClick={handleSubmit} 
+                disabled={loading}
+                className="ml-auto"
+              >
                 {loading ? 'Criando...' : '🚀 Criar Chatbot'}
+              </Button>
+            )}
+            
+            {step === 3 && (
+              <Button onClick={handleClose} className="ml-auto">
+                Finalizar
               </Button>
             )}
           </div>
