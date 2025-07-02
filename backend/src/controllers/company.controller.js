@@ -283,6 +283,7 @@ const companyController = {
   async getWhatsAppStatus(req, res) {
     try {
       const { id } = req.params;
+      console.log('🔍 DEBUG: Getting WhatsApp status for company:', id);
 
       const { data: session } = await supabase
         .from('whatsapp_sessions')
@@ -291,30 +292,42 @@ const companyController = {
         .single();
 
       if (!session) {
+        console.log('❌ DEBUG: No WhatsApp session found');
         return res.status(404).json({ error: 'WhatsApp session not found' });
       }
 
-      // Get status from Evolution API
-      const status = await evolutionService.getInstanceStatus(session.evolution_instance);
+      console.log('📋 DEBUG: Session found:', session.evolution_instance);
+
+      // Get status with QR code from Evolution API using the new method
+      const statusData = await evolutionService.getInstanceStatusWithQR(session.evolution_instance);
+      console.log('📡 DEBUG: Evolution API response:', statusData);
 
       // Update status in database
+      const connectionState = statusData.instance?.state || 'disconnected';
       await supabase
         .from('whatsapp_sessions')
         .update({
-          status: status.instance?.state || 'disconnected',
-          phone_number: status.instance?.profilePictureUrl || null,
+          status: connectionState,
+          phone_number: statusData.instance?.profileName || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', session.id);
 
+      console.log('✅ DEBUG: Status updated in database:', connectionState);
+
       res.json({
-        status: status.instance?.state || 'disconnected',
-        phone_number: status.instance?.profileName || null,
-        qr_code: status.qrcode || null
+        status: connectionState,
+        phone_number: statusData.instance?.profileName || null,
+        qr_code: statusData.qr_code || null,
+        raw_status: statusData // Para debug
       });
     } catch (error) {
+      console.log('💥 DEBUG: Error in getWhatsAppStatus:', error);
       logger.error('Error getting WhatsApp status:', error);
-      res.status(500).json({ error: 'Failed to get WhatsApp status' });
+      res.status(500).json({ 
+        error: 'Failed to get WhatsApp status',
+        details: error.message 
+      });
     }
   }
 };
