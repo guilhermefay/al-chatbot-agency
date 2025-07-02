@@ -36,7 +36,7 @@ const evolutionService = {
 
   async getInstanceStatus(instanceName) {
     try {
-      const response = await this.client.get(`/instance/status/${instanceName}`);
+      const response = await this.client.get(`/instance/connectionState/${instanceName}`);
       return response.data;
     } catch (error) {
       logger.error('Error getting instance status:', error);
