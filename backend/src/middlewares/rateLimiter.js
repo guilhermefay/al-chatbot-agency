@@ -10,6 +10,12 @@ const createRateLimiter = (windowMs = 15 * 60 * 1000, max = 100, message = 'Too 
     },
     standardHeaders: true,
     legacyHeaders: false,
+    // Fix for Railway deployment with trust proxy
+    trustProxy: process.env.TRUST_PROXY || false,
+    keyGenerator: (req) => {
+      // Use X-Forwarded-For if available (Railway proxy), otherwise use remote address
+      return req.ip || req.connection.remoteAddress || 'unknown';
+    }
   });
 };
 
