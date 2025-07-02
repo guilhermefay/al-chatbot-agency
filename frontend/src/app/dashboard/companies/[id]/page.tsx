@@ -190,7 +190,7 @@ export default function CompanyDetailsPage() {
 
   const checkWhatsAppStatus = async () => {
     try {
-      const response = await fetch(`https://backend-api-production-a3d3.up.railway.app/api/companies/${id}/whatsapp/status`);
+      const response = await fetch(`https://backend-api-fixed-production.up.railway.app/api/companies/${id}/whatsapp/status`);
       const data = await response.json();
       setWhatsappStatus(data);
     } catch (error) {
@@ -201,7 +201,7 @@ export default function CompanyDetailsPage() {
   const createWhatsAppSession = async () => {
     try {
       setSaving(true);
-      const response = await fetch(`https://backend-api-production-a3d3.up.railway.app/api/companies/${id}/whatsapp`, {
+      const response = await fetch(`https://backend-api-fixed-production.up.railway.app/api/companies/${id}/whatsapp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
