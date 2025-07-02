@@ -21,6 +21,10 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED 1
 ENV NODE_ENV production
 
+# Supabase environment variables for build time
+ENV NEXT_PUBLIC_SUPABASE_URL=https://zogacwdhspzpqqfmakcf.supabase.co
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvZ2Fjd2Roc3B6cHFxZm1ha2NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0MDY4ODcsImV4cCI6MjA2Njk4Mjg4N30.wCd1j9w2n2XL-6W2LRgvXIrDYqmSATTciHhTJ0on7gA
+
 RUN npm run build
 
 # Production image, copy all the files and run next
