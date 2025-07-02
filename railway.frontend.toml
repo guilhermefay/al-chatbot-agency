@@ -1,0 +1,28 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+healthcheckPath = "/"
+startCommand = "npm run start"
+restartPolicyType = "on_failure"
+
+[[services]]
+name = "al-chatbot-frontend-main"
+source = "."
+rootDirectory = "frontend"
+
+[services.healthcheck]
+path = "/"
+port = 3000
+
+[[services.variables]]
+name = "NODE_ENV"
+value = "production"
+
+[[services.variables]]
+name = "NEXT_PUBLIC_API_URL"
+value = "https://al-chatbot-backend-new-production.up.railway.app/api"
+
+[[services.variables]]
+name = "PORT"
+value = "3000" 
