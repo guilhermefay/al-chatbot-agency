@@ -58,6 +58,11 @@ export default function CompanyDetailsPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const { id } = params;
+  
+  // Configurar API URL usando variável de ambiente
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend-api-new-production.up.railway.app/api';
+  console.log('🟡 API_BASE_URL configurada:', API_BASE_URL);
+  
   const [company, setCompany] = useState<Company | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'integrations');
@@ -190,7 +195,7 @@ export default function CompanyDetailsPage() {
 
   const checkWhatsAppStatus = async () => {
     try {
-      const response = await fetch(`https://backend-api-new-production.up.railway.app/api/companies/${id}/whatsapp/status`);
+      const response = await fetch(`${API_BASE_URL}/companies/${id}/whatsapp/status`);
       const data = await response.json();
       setWhatsappStatus(data);
     } catch (error) {
@@ -203,9 +208,9 @@ export default function CompanyDetailsPage() {
       alert('🚀 FUNÇÃO CHAMADA! Criando sessão WhatsApp...');
       setSaving(true);
       console.log('🟡 Criando sessão WhatsApp para empresa:', id);
-      console.log('🟡 URL chamada:', `https://backend-api-new-production.up.railway.app/api/companies/${id}/whatsapp`);
+      console.log('🟡 URL chamada:', `${API_BASE_URL}/companies/${id}/whatsapp`);
       
-      const response = await fetch(`https://backend-api-new-production.up.railway.app/api/companies/${id}/whatsapp`, {
+      const response = await fetch(`${API_BASE_URL}/companies/${id}/whatsapp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -247,7 +252,7 @@ export default function CompanyDetailsPage() {
             pollCount++;
             console.log(`🔄 Polling ${pollCount}/${maxPolls} - Verificando status...`);
             
-            const statusResponse = await fetch(`https://backend-api-new-production.up.railway.app/api/companies/${id}/whatsapp/status`);
+            const statusResponse = await fetch(`${API_BASE_URL}/companies/${id}/whatsapp/status`);
             const statusData = await statusResponse.json();
             console.log(`🔄 Status atualizado (poll ${pollCount}):`, statusData);
             
