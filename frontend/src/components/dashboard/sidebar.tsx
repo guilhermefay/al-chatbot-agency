@@ -11,7 +11,7 @@ import {
   Plug
 } from 'lucide-react'
 
-// Sidebar limpo com 4 abas essenciais - Force deploy v2
+// Sidebar limpo com 4 abas essenciais - Force deploy v3 - FINAL
 const navigation = [
   {
     name: 'Clientes',
