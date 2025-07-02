@@ -4,54 +4,38 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { 
-  LayoutDashboard, 
-  Building, 
+  Users, 
+  Settings, 
   MessageSquare, 
-  FileText, 
-  Settings,
-  Bot,
-  Database,
-  Brain,
-  Zap
+  Cog,
+  Plug
 } from 'lucide-react'
 
 const navigation = [
   {
-    name: 'Dashboard Multi-Tenant',
-    href: '/dashboard',
-    icon: LayoutDashboard,
-    description: 'Visão geral dos clientes'
-  },
-  {
-    name: 'Clientes & Chatbots',
+    name: 'Clientes',
     href: '/dashboard/companies',
-    icon: Building,
-    description: 'Gerenciar todos os clientes'
+    icon: Users,
+    description: 'Gerenciar clientes e chatbots'
   },
   {
-    name: 'Conversas Globais',
+    name: 'Integrações',
+    href: '/dashboard/integrations',
+    icon: Plug,
+    description: 'WhatsApp, Dify, CRM, Agenda'
+  },
+  {
+    name: 'Conversas',
     href: '/dashboard/conversations',
     icon: MessageSquare,
-    description: 'Todas as conversas'
+    description: 'Histórico de chats'
   },
   {
-    name: 'Gestão Dify',
-    href: '/dashboard/dify',
-    icon: Bot,
-    description: 'Conversas, Datasets e IA'
-  },
-  {
-    name: 'Workflows IA',
-    href: '/dashboard/dify/workflows',
-    icon: Brain,
-    description: 'Assistentes e Automações'
-  },
-  {
-    name: 'Integrações Master',
-    href: '/dashboard/integrations',
-    icon: Settings,
-    description: 'APIs e webhooks'
-  },
+    name: 'Configurações',
+    href: '/dashboard/settings',
+    icon: Cog,
+    description: 'Settings do sistema'
+  }
 ]
 
 export function Sidebar() {
@@ -60,45 +44,50 @@ export function Sidebar() {
   return (
     <div className="flex h-full w-64 flex-col bg-white border-r">
       <div className="flex h-16 items-center px-6 border-b">
-        <h1 className="text-xl font-bold">AL Chatbot</h1>
+        <h1 className="text-xl font-bold text-green-600">AL Studio</h1>
+        <span className="ml-2 text-sm text-gray-500">Hub</span>
       </div>
       <nav className="flex-1 px-4 py-6">
-        <ul className="space-y-2">
-          {navigation.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <li key={item.name}>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  <div className="flex-1">
-                    {item.name}
-                    {item.description && (
-                      <div className="text-xs opacity-70">{item.description}</div>
+        <div className="mb-4">
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+            Gerenciamento
+          </h2>
+          <ul className="space-y-1">
+            {navigation.map((item) => {
+              const isActive = pathname === item.href || 
+                (item.href === '/dashboard/companies' && pathname.startsWith('/dashboard/companies'));
+              return (
+                <li key={item.name}>
+                  <Link
+                    href={item.href}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
+                      isActive
+                        ? 'bg-green-50 text-green-700 border-l-2 border-green-600'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     )}
-                  </div>
-                  {item.name === 'Gestão Dify' && (
-                    <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                      ✅
-                    </span>
-                  )}
-                  {item.name === 'Workflows IA' && (
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                      🧠 IA
-                    </span>
-                  )}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+                  >
+                    <item.icon className={cn("h-4 w-4", isActive ? "text-green-600" : "text-gray-400")} />
+                    <div className="flex-1">
+                      <div className="font-medium">{item.name}</div>
+                      <div className="text-xs text-gray-500">{item.description}</div>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        {/* Footer info */}
+        <div className="mt-auto pt-4 border-t border-gray-200">
+          <div className="px-3 py-2">
+            <div className="text-xs text-gray-500">
+              <div className="font-medium">Hub de Integrações</div>
+              <div>Conecte WhatsApp, IA e CRM</div>
+            </div>
+          </div>
+        </div>
       </nav>
     </div>
   )
