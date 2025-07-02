@@ -59,9 +59,10 @@ export default function CompanyDetailsPage() {
   const searchParams = useSearchParams();
   const { id } = params;
   
-  // Configurar API URL usando variável de ambiente
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend-api-new-production.up.railway.app/api';
-  console.log('🟡 API_BASE_URL configurada:', API_BASE_URL);
+  // FORÇAR URL ABSOLUTA - CORREÇÃO TEMPORÁRIA
+  const API_BASE_URL = 'https://backend-api-new-production.up.railway.app/api';
+  console.log('🔥 FORÇANDO API_BASE_URL:', API_BASE_URL);
+  alert('🔥 FORÇANDO URL: ' + API_BASE_URL);
   
   const [company, setCompany] = useState<Company | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -195,6 +196,7 @@ export default function CompanyDetailsPage() {
 
   const checkWhatsAppStatus = async () => {
     try {
+      console.log('🔥 FORÇANDO checkWhatsAppStatus URL:', `${API_BASE_URL}/companies/${id}/whatsapp/status`);
       const response = await fetch(`${API_BASE_URL}/companies/${id}/whatsapp/status`);
       const data = await response.json();
       setWhatsappStatus(data);
