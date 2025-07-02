@@ -200,70 +200,94 @@ export default function CompanyDetailsPage() {
 
   const createWhatsAppSession = async () => {
     try {
+      alert('🚀 FUNÇÃO CHAMADA! Criando sessão WhatsApp...');
       setSaving(true);
-      console.log('Criando sessão WhatsApp para empresa:', id);
+      console.log('🟡 Criando sessão WhatsApp para empresa:', id);
+      console.log('🟡 URL chamada:', `https://backend-api-new-production.up.railway.app/api/companies/${id}/whatsapp`);
       
       const response = await fetch(`https://backend-api-new-production.up.railway.app/api/companies/${id}/whatsapp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
 
+      console.log('🟡 Response status:', response.status);
+      console.log('🟡 Response ok:', response.ok);
+
       const data = await response.json();
-      console.log('Resposta da criação de sessão:', data);
+      console.log('🟡 Resposta completa da criação de sessão:', JSON.stringify(data, null, 2));
       
       if (response.ok) {
+        alert('✅ Sessão criada com sucesso! Verificando QR Code...');
+        
         // Acessar QR code corretamente da resposta
         const qrCodeFromResponse = data.session?.qr_code || data.qr_code;
+        console.log('🟡 QR Code na resposta:', qrCodeFromResponse);
+        
         if (qrCodeFromResponse) {
+          console.log('🟢 QR Code encontrado, definindo...');
           setQrCode(qrCodeFromResponse);
+        } else {
+          console.log('🟡 QR Code não encontrado na resposta, iniciando polling...');
         }
         
         // Atualizar status local
-        setWhatsappStatus({ 
+        const newStatus = { 
           status: data.session?.status || 'disconnected',
           phone_number: data.session?.phone_number || null
-        });
+        };
+        console.log('🟡 Novo status WhatsApp:', newStatus);
+        setWhatsappStatus(newStatus);
         
         // Iniciar polling para verificar conexão e obter QR Code
+        let pollCount = 0;
+        const maxPolls = 60; // 3 minutos
+        
         const pollForQrAndStatus = setInterval(async () => {
           try {
+            pollCount++;
+            console.log(`🔄 Polling ${pollCount}/${maxPolls} - Verificando status...`);
+            
             const statusResponse = await fetch(`https://backend-api-new-production.up.railway.app/api/companies/${id}/whatsapp/status`);
             const statusData = await statusResponse.json();
-            console.log('Status atualizado:', statusData);
+            console.log(`🔄 Status atualizado (poll ${pollCount}):`, statusData);
             
             setWhatsappStatus(statusData);
             
             // Se tiver QR code na resposta, usar ele
             if (statusData.qr_code && !qrCode) {
+              console.log('🟢 QR Code encontrado no polling!');
               setQrCode(statusData.qr_code);
             }
             
             // Se conectou, parar o polling
             if (statusData.status === 'open') {
+              console.log('🟢 WhatsApp conectado! Parando polling...');
               clearInterval(pollForQrAndStatus);
               setQrCode(null); // Limpar QR code quando conectar
+              alert('🎉 WhatsApp conectado com sucesso!');
+            }
+            
+            // Parar polling após 60 tentativas
+            if (pollCount >= maxPolls) {
+              console.log('⏰ Polling finalizado por timeout');
+              clearInterval(pollForQrAndStatus);
             }
           } catch (error) {
-            console.error('Erro no polling:', error);
+            console.error('❌ Erro no polling:', error);
           }
         }, 3000);
         
-        // Limpar polling após 3 minutos
-        setTimeout(() => {
-          clearInterval(pollForQrAndStatus);
-          console.log('Polling finalizado após timeout');
-        }, 180000);
-        
-        console.log('Sessão WhatsApp criada com sucesso');
+        console.log('✅ Sessão WhatsApp criada com sucesso, polling iniciado');
       } else {
-        console.error('Erro na resposta:', data);
-        alert('Erro ao criar sessão WhatsApp: ' + (data.error || data.message || 'Erro desconhecido'));
+        console.error('❌ Erro na resposta:', data);
+        alert('❌ Erro ao criar sessão WhatsApp: ' + (data.error || data.message || 'Erro desconhecido'));
       }
     } catch (error) {
-      console.error('Erro ao criar sessão WhatsApp:', error);
-      alert('Erro ao conectar com o backend. Verifique o console para mais detalhes.');
+      console.error('❌ Erro ao criar sessão WhatsApp:', error);
+      alert('❌ ERRO FATAL: ' + (error as Error).message + ' - Verifique o console para mais detalhes.');
     } finally {
       setSaving(false);
+      console.log('🔵 setSaving(false) - Finalizando função');
     }
   };
 
