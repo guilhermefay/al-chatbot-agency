@@ -180,16 +180,24 @@ export default function CompanyDetailsPage() {
 
       if (error) throw error;
 
-      // Processar conversas sem contar mensagens (para corrigir erro 400)
-      const processedConversations = data.map((conv: any) => ({
-        ...conv,
-        messages_count: 0 // Valor fixo para evitar erro na query
-      }));
+      // Buscar contagem de mensagens separadamente para cada conversa
+      const conversationsWithCount = await Promise.all(
+        (data || []).map(async (conv) => {
+          const { count } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('conversation_id', conv.id);
+          
+          return {
+            ...conv,
+            messages_count: count || 0
+          };
+        })
+      );
 
-      setConversations(processedConversations);
+      setConversations(conversationsWithCount);
     } catch (error) {
       console.error('Erro ao buscar conversas:', error);
-      // Fallback para evitar travamento
       setConversations([]);
     }
   };
@@ -247,7 +255,7 @@ export default function CompanyDetailsPage() {
         
         // Iniciar polling para verificar conexão e obter QR Code
         let pollCount = 0;
-        const maxPolls = 60; // 3 minutos
+        const maxPolls = 30; // 5 minutos com intervalos maiores
         
         const pollForQrAndStatus = setInterval(async () => {
           try {
@@ -255,6 +263,20 @@ export default function CompanyDetailsPage() {
             console.log(`🔄 Polling ${pollCount}/${maxPolls} - Verificando status...`);
             
             const statusResponse = await fetch(`${API_BASE_URL}/companies/${id}/whatsapp/status`);
+            
+            // Verificar se a resposta foi bem-sucedida
+            if (!statusResponse.ok) {
+              if (statusResponse.status === 429) {
+                console.log('⚠️ Rate limit atingido, aguardando...');
+                return; // Pular esta iteração
+              }
+              if (statusResponse.status === 404) {
+                console.log('⚠️ Sessão não encontrada ainda, aguardando...');
+                return; // Pular esta iteração
+              }
+              throw new Error(`Status ${statusResponse.status}`);
+            }
+            
             const statusData = await statusResponse.json();
             console.log(`🔄 Status atualizado (poll ${pollCount}):`, statusData);
             
@@ -272,9 +294,10 @@ export default function CompanyDetailsPage() {
               clearInterval(pollForQrAndStatus);
               setQrCode(null); // Limpar QR code quando conectar
               alert('🎉 WhatsApp conectado com sucesso!');
+              return;
             }
             
-            // Parar polling após 60 tentativas
+            // Parar polling após tentativas máximas
             if (pollCount >= maxPolls) {
               console.log('⏰ Polling finalizado por timeout');
               clearInterval(pollForQrAndStatus);
@@ -282,7 +305,7 @@ export default function CompanyDetailsPage() {
           } catch (error) {
             console.error('❌ Erro no polling:', error);
           }
-        }, 3000);
+        }, 10000); // 10 segundos de intervalo em vez de 3
         
         console.log('✅ Sessão WhatsApp criada com sucesso, polling iniciado');
       } else {
