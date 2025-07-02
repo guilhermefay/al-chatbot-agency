@@ -1,0 +1,49 @@
+# ====================================
+# VARIÁVEIS DE AMBIENTE PARA RAILWAY
+# AL CHATBOT AGENCY BACKEND
+# ====================================
+
+# COPIE E COLE NO RAILWAY VARIABLES
+
+# Server Configuration
+PORT=8080
+NODE_ENV=production
+WEBHOOK_BASE_URL=https://al-chatbot-backend-production.up.railway.app
+
+# Supabase - CONFIGURADO ✅
+SUPABASE_URL=https://zogacwdhspzpqqfmakcf.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvZ2Fjd2Roc3B6cHFxZm1ha2NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0MDY4ODcsImV4cCI6MjA2Njk4Mjg4N30.wCd1j9w2n2XL-6W2LRgvXIrDYqmSATTciHhTJ0on7gA
+SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvZ2Fjd2Roc3B6cHFxZm1ha2NmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTQwNjg4NywiZXhwIjoyMDY2OTgyODg3fQ.TWxx3vfD7h774zNtsYINJP7bvlEUmeSaB3lQb8vRkDY
+
+# Evolution API - CONFIGURADO ✅
+EVOLUTION_API_URL=https://evolution-api-official-production.up.railway.app
+EVOLUTION_API_KEY=al_studio_evolution_2024_secure
+
+# Dify - CONFIGURE QUANDO TIVER
+DIFY_API_URL=https://api.dify.ai/v1
+DIFY_API_KEY=your_dify_api_key
+
+# OpenAI (for Whisper) - CONFIGURE QUANDO TIVER
+OPENAI_API_KEY=your_openai_api_key
+
+# ElevenLabs - CONFIGURE QUANDO TIVER
+ELEVENLABS_API_KEY=your_elevenlabs_api_key
+ELEVENLABS_VOICE_ID=your_default_voice_id
+
+# Security
+JWT_SECRET=al_chatbot_agency_jwt_secret_2024_super_secure_key_random_string
+ENCRYPTION_KEY=super_secure_32_char_encryption!!
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+
+# Logging
+LOG_LEVEL=info
+
+# ====================================
+# COMO USAR:
+# 1. Acesse o Railway project
+# 2. Vá em "Variables" 
+# 3. Cole cada linha acima (sem os comentários #)
+# ==================================== 
