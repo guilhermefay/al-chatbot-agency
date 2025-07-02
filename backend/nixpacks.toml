@@ -1,17 +1,15 @@
 [variables]
 NIXPACKS_NODE_VERSION = "18"
+PORT = "3001"
 
 [phases.setup]
 nixPkgs = ["nodejs_18", "npm-9_x"]
 
 [phases.install]
-cmds = ["npm ci"]
+cmds = ["npm install"]
 
 [phases.build]
 cmds = ["npm run build"]
 
 [phases.start]
-cmd = "npm start"
-
-[variables]
-PORT = "3001" 
+cmd = "npm start" 
