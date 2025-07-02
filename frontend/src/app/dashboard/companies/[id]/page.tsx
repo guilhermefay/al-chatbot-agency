@@ -59,10 +59,10 @@ export default function CompanyDetailsPage() {
   const searchParams = useSearchParams();
   const { id } = params;
   
-  // FORÇAR URL ABSOLUTA - CORREÇÃO TEMPORÁRIA
+  // FORÇAR URL ABSOLUTA - CORREÇÃO TEMPORÁRIA v2
   const API_BASE_URL = 'https://backend-api-new-production.up.railway.app/api';
-  console.log('🔥 FORÇANDO API_BASE_URL:', API_BASE_URL);
-  alert('🔥 FORÇANDO URL: ' + API_BASE_URL);
+  console.log('🔥 FORÇANDO API_BASE_URL v2:', API_BASE_URL);
+  alert('🔥 FORÇANDO URL v2: ' + API_BASE_URL);
   
   const [company, setCompany] = useState<Company | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
