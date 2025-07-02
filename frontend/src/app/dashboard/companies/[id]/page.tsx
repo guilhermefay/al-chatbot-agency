@@ -190,7 +190,7 @@ export default function CompanyDetailsPage() {
 
   const checkWhatsAppStatus = async () => {
     try {
-      const response = await fetch(`https://backend-clean-production.up.railway.app/api/companies/${id}/whatsapp/status`);
+      const response = await fetch(`https://backend-api-new-production.up.railway.app/api/companies/${id}/whatsapp/status`);
       const data = await response.json();
       setWhatsappStatus(data);
     } catch (error) {
@@ -201,34 +201,67 @@ export default function CompanyDetailsPage() {
   const createWhatsAppSession = async () => {
     try {
       setSaving(true);
-      const response = await fetch(`https://backend-clean-production.up.railway.app/api/companies/${id}/whatsapp`, {
+      console.log('Criando sessão WhatsApp para empresa:', id);
+      
+      const response = await fetch(`https://backend-api-new-production.up.railway.app/api/companies/${id}/whatsapp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
 
       const data = await response.json();
+      console.log('Resposta da criação de sessão:', data);
       
       if (response.ok) {
-        setQrCode(data.qr_code);
-        setWhatsappStatus({ status: 'disconnected' });
+        // Acessar QR code corretamente da resposta
+        const qrCodeFromResponse = data.session?.qr_code || data.qr_code;
+        if (qrCodeFromResponse) {
+          setQrCode(qrCodeFromResponse);
+        }
         
-        // Polling para verificar conexão
-        const pollStatus = setInterval(async () => {
-          await checkWhatsAppStatus();
-          const currentStatus = whatsappStatus?.status;
-          if (currentStatus === 'open') {
-            clearInterval(pollStatus);
+        // Atualizar status local
+        setWhatsappStatus({ 
+          status: data.session?.status || 'disconnected',
+          phone_number: data.session?.phone_number || null
+        });
+        
+        // Iniciar polling para verificar conexão e obter QR Code
+        const pollForQrAndStatus = setInterval(async () => {
+          try {
+            const statusResponse = await fetch(`https://backend-api-new-production.up.railway.app/api/companies/${id}/whatsapp/status`);
+            const statusData = await statusResponse.json();
+            console.log('Status atualizado:', statusData);
+            
+            setWhatsappStatus(statusData);
+            
+            // Se tiver QR code na resposta, usar ele
+            if (statusData.qr_code && !qrCode) {
+              setQrCode(statusData.qr_code);
+            }
+            
+            // Se conectou, parar o polling
+            if (statusData.status === 'open') {
+              clearInterval(pollForQrAndStatus);
+              setQrCode(null); // Limpar QR code quando conectar
+            }
+          } catch (error) {
+            console.error('Erro no polling:', error);
           }
         }, 3000);
         
-        // Limpar polling após 2 minutos
-        setTimeout(() => clearInterval(pollStatus), 120000);
+        // Limpar polling após 3 minutos
+        setTimeout(() => {
+          clearInterval(pollForQrAndStatus);
+          console.log('Polling finalizado após timeout');
+        }, 180000);
+        
+        console.log('Sessão WhatsApp criada com sucesso');
       } else {
-        alert('Erro ao criar sessão WhatsApp: ' + (data.error || 'Erro desconhecido'));
+        console.error('Erro na resposta:', data);
+        alert('Erro ao criar sessão WhatsApp: ' + (data.error || data.message || 'Erro desconhecido'));
       }
     } catch (error) {
       console.error('Erro ao criar sessão WhatsApp:', error);
-      alert('Erro ao conectar com o backend. Tente novamente.');
+      alert('Erro ao conectar com o backend. Verifique o console para mais detalhes.');
     } finally {
       setSaving(false);
     }
@@ -527,29 +560,17 @@ export default function CompanyDetailsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {whatsappStatus ? (
+                {whatsappStatus && whatsappStatus.status === 'open' ? (
                   <div>
                     <div className="flex items-center justify-between mb-4">
                       <span>Status:</span>
-                      <Badge className={
-                        whatsappStatus.status === 'open' 
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }>
-                        {whatsappStatus.status === 'open' ? 'Conectado' : 'Desconectado'}
+                      <Badge className="bg-green-100 text-green-800">
+                        Conectado
                       </Badge>
                     </div>
                     {whatsappStatus.phone_number && (
                       <div className="text-sm text-gray-600">
                         Número: {whatsappStatus.phone_number}
-                      </div>
-                    )}
-                    {qrCode && whatsappStatus.status !== 'open' && (
-                      <div className="text-center">
-                        <img src={qrCode} alt="QR Code" className="mx-auto max-w-48" />
-                        <p className="text-sm text-gray-600 mt-2">
-                          Escaneie o QR Code no WhatsApp
-                        </p>
                       </div>
                     )}
                     <Button onClick={checkWhatsAppStatus} variant="outline" size="sm">
@@ -561,11 +582,27 @@ export default function CompanyDetailsPage() {
                   <div className="text-center py-4">
                     <QrCode className="h-12 w-12 mx-auto text-gray-400 mb-4" />
                     <p className="text-gray-600 mb-4">
-                      Nenhuma sessão WhatsApp configurada
+                      {whatsappStatus ? 'WhatsApp desconectado' : 'Nenhuma sessão WhatsApp configurada'}
                     </p>
-                    <Button onClick={createWhatsAppSession} disabled={saving}>
-                      {saving ? 'Criando...' : 'Conectar WhatsApp'}
-                    </Button>
+                    {qrCode && (
+                      <div className="text-center mb-4">
+                        <img src={qrCode} alt="QR Code" className="mx-auto max-w-48" />
+                        <p className="text-sm text-gray-600 mt-2">
+                          Escaneie o QR Code no WhatsApp
+                        </p>
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <Button onClick={createWhatsAppSession} disabled={saving} className="w-full">
+                        {saving ? 'Criando...' : 'Conectar WhatsApp'}
+                      </Button>
+                      {whatsappStatus && (
+                        <Button onClick={checkWhatsAppStatus} variant="outline" size="sm" className="w-full">
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Verificar Status
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 )}
               </CardContent>
