@@ -6,7 +6,7 @@
 
 [phases.install]
   dependsOn = ['setup']
-  cmds = ['cd backend && npm ci']
+  cmds = ['cd backend && npm install']
 
 [phases.build]
   dependsOn = ['install'] 
