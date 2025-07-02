@@ -329,6 +329,120 @@ const companyController = {
         details: error.message 
       });
     }
+  },
+
+  /**
+   * Conecta WhatsApp diretamente com QR code instantâneo
+   * POST /api/companies/:id/whatsapp/connect
+   */
+  async connectWhatsAppInstant(req, res) {
+    try {
+      const { id } = req.params;
+      console.log('🚀 DEBUG: Instant WhatsApp connect for company:', id);
+
+      // Check if company exists
+      const { data: company } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (!company) {
+        console.log('❌ DEBUG: Company not found:', id);
+        return res.status(404).json({ error: 'Company not found' });
+      }
+
+      console.log('✅ DEBUG: Company found:', company.name);
+
+      // Verificar se já existe sessão
+      const { data: existingSession } = await supabase
+        .from('whatsapp_sessions')
+        .select('*')
+        .eq('company_id', id)
+        .single();
+
+      let instanceName;
+      let sessionData;
+
+      if (existingSession) {
+        console.log('♻️  DEBUG: Using existing session:', existingSession.evolution_instance);
+        instanceName = existingSession.evolution_instance;
+        sessionData = existingSession;
+      } else {
+        // Generate unique instance name
+        instanceName = `company_${id}_${Date.now()}`;
+        console.log('🏷️ DEBUG: Creating new instance:', instanceName);
+
+        // Create instance in Evolution API
+        const evolutionInstance = await evolutionService.createInstance(instanceName, id);
+        console.log('📡 DEBUG: Evolution instance created:', evolutionInstance);
+
+        // Save session in database
+        const { data: newSession, error } = await supabase
+          .from('whatsapp_sessions')
+          .insert({
+            company_id: id,
+            evolution_instance: instanceName,
+            status: 'disconnected',
+            webhook_url: evolutionInstance.webhook?.url
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.log('❌ DEBUG: Supabase error:', error);
+          throw error;
+        }
+
+        sessionData = newSession;
+        console.log('✅ DEBUG: Session saved:', sessionData.id);
+      }
+
+      // Tentar conectar e obter QR code
+      console.log('🔗 DEBUG: Getting QR code...');
+      let qrCodeData = null;
+      
+      try {
+        const connectResponse = await evolutionService.connectInstance(instanceName);
+        console.log('📱 DEBUG: Connect response:', connectResponse);
+        qrCodeData = connectResponse.qrcode || connectResponse.base64 || null;
+      } catch (connectError) {
+        console.log('⚠️  DEBUG: Connect error, trying status...', connectError.message);
+        
+        // Se connect falhar, tenta status
+        try {
+          const statusData = await evolutionService.getInstanceStatusWithQR(instanceName);
+          qrCodeData = statusData.qr_code || null;
+        } catch (statusError) {
+          console.log('⚠️  DEBUG: Status error:', statusError.message);
+        }
+      }
+
+      // Retornar resultado
+      res.json({
+        success: true,
+        session: sessionData,
+        qr_code: qrCodeData,
+        instance_name: instanceName,
+        message: qrCodeData 
+          ? 'QR Code disponível! Escaneie para conectar.' 
+          : 'Sessão criada. QR Code pode estar sendo gerado...',
+        company: {
+          id: company.id,
+          name: company.name
+        }
+      });
+
+      logger.info(`WhatsApp instant connect completed for company: ${id}`);
+    } catch (error) {
+      console.log('💥 DEBUG: Error in connectWhatsAppInstant:', error);
+      logger.error('Error in instant WhatsApp connect:', error);
+      res.status(500).json({ 
+        error: 'Failed to connect WhatsApp instantly',
+        details: error.message,
+        stack: error.stack?.substring(0, 500)
+      });
+    }
   }
 };
 
