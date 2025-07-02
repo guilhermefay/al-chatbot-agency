@@ -289,7 +289,7 @@ const companyController = {
       const { id } = req.params;
       console.log('🔍 DEBUG: Getting WhatsApp status for company:', id);
 
-      // Buscar a sessão mais recente ao invés de usar .single()
+      // Buscar a sessão mais recente ao invés de usar .single() - FIXED v2
       const { data: sessions } = await supabase
         .from('whatsapp_sessions')
         .select('*')
