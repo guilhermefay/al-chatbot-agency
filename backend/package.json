@@ -5,6 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon src/server.js",
+    "build": "echo 'No build step required for Node.js backend'",
     "start": "node src/server.js",
     "test": "jest"
   },

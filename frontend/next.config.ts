@@ -9,15 +9,15 @@ const nextConfig: NextConfig = {
     unoptimized: true
   },
   
-  // Configurações de ambiente
+  // Configurações de ambiente com valores padrão para build
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://al-chatbot-backend-new-production.up.railway.app/api',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://backend-api-production.up.railway.app/api',
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key-for-build',
   },
   
   // Configurações de build
-  experimental: {
-    serverComponentsExternalPackages: ['@supabase/supabase-js']
-  }
+  serverExternalPackages: ['@supabase/supabase-js']
 };
 
 export default nextConfig;
