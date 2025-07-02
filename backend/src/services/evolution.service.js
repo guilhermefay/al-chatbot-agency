@@ -17,14 +17,7 @@ const evolutionService = {
         integration: 'WHATSAPP-BAILEYS',
         reject_call: true,
         msg_call: 'Desculpe, não posso atender chamadas.',
-        webhook: {
-          url: `${process.env.WEBHOOK_BASE_URL}/webhook/evolution/${instanceName}`,
-          events: [
-            'messages.upsert',
-            'connection.update',
-            'status.instance'
-          ]
-        }
+        webhook: `${process.env.WEBHOOK_BASE_URL}/webhook/evolution/${instanceName}`
       });
 
       return response.data;
