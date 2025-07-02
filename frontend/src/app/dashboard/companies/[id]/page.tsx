@@ -166,8 +166,7 @@ export default function CompanyDetailsPage() {
           platform,
           status,
           last_message,
-          last_message_at,
-          messages(count)
+          last_message_at
         `)
         .eq('company_id', id)
         .order('last_message_at', { ascending: false })
@@ -175,20 +174,23 @@ export default function CompanyDetailsPage() {
 
       if (error) throw error;
 
+      // Processar conversas sem contar mensagens (para corrigir erro 400)
       const processedConversations = data.map((conv: any) => ({
         ...conv,
-        messages_count: conv.messages?.length || 0
+        messages_count: 0 // Valor fixo para evitar erro na query
       }));
 
       setConversations(processedConversations);
     } catch (error) {
       console.error('Erro ao buscar conversas:', error);
+      // Fallback para evitar travamento
+      setConversations([]);
     }
   };
 
   const checkWhatsAppStatus = async () => {
     try {
-      const response = await fetch(`/api/companies/${id}/whatsapp/status`);
+      const response = await fetch(`https://backend-api-production-a3d3.up.railway.app/api/companies/${id}/whatsapp/status`);
       const data = await response.json();
       setWhatsappStatus(data);
     } catch (error) {
@@ -199,7 +201,7 @@ export default function CompanyDetailsPage() {
   const createWhatsAppSession = async () => {
     try {
       setSaving(true);
-      const response = await fetch(`/api/companies/${id}/whatsapp`, {
+      const response = await fetch(`https://backend-api-production-a3d3.up.railway.app/api/companies/${id}/whatsapp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -221,9 +223,12 @@ export default function CompanyDetailsPage() {
         
         // Limpar polling após 2 minutos
         setTimeout(() => clearInterval(pollStatus), 120000);
+      } else {
+        alert('Erro ao criar sessão WhatsApp: ' + (data.error || 'Erro desconhecido'));
       }
     } catch (error) {
       console.error('Erro ao criar sessão WhatsApp:', error);
+      alert('Erro ao conectar com o backend. Tente novamente.');
     } finally {
       setSaving(false);
     }
