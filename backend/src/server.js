@@ -25,9 +25,14 @@ app.use(cors({
   credentials: true
 }));
 
-// Rate limiting
-app.use('/api/webhook', webhookLimiter);
-app.use('/api', defaultLimiter);
+// Rate limiting (can be disabled for debugging)
+if (!process.env.DISABLE_RATE_LIMITING) {
+  app.use('/api/webhook', webhookLimiter);
+  app.use('/api', defaultLimiter);
+  logger.info('📊 Rate limiting enabled');
+} else {
+  logger.info('⚠️  Rate limiting disabled for debugging');
+}
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
