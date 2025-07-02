@@ -13,6 +13,9 @@ const routes = require('./routes');
 const app = express();
 const httpServer = createServer(app);
 
+// Trust proxy for Railway deployment (fixes rate limiting)
+app.set('trust proxy', true);
+
 // Security middlewares
 app.use(helmet());
 app.use(cors({
