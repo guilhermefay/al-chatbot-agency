@@ -1,9 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Configuração para output standalone (necessário para Docker)
-  output: 'standalone',
-  
   // Configurações de imagens
   images: {
     unoptimized: true
