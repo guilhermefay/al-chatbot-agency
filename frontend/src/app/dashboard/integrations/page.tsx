@@ -16,8 +16,6 @@ interface Company {
 interface IntegrationSettings {
   dify_api_key: string
   evolution_instance: string
-  openai_api_key: string
-  elevenlabs_api_key: string
 }
 
 export default function IntegrationsPage() {
@@ -25,9 +23,7 @@ export default function IntegrationsPage() {
   const [selectedCompany, setSelectedCompany] = useState<string>('')
   const [settings, setSettings] = useState<IntegrationSettings>({
     dify_api_key: '',
-    evolution_instance: '',
-    openai_api_key: '',
-    elevenlabs_api_key: ''
+    evolution_instance: ''
   })
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
@@ -81,9 +77,7 @@ export default function IntegrationsPage() {
 
       setSettings({
         dify_api_key: data?.dify_api_key || '',
-        evolution_instance: whatsappData?.evolution_instance || '',
-        openai_api_key: '',
-        elevenlabs_api_key: ''
+        evolution_instance: whatsappData?.evolution_instance || ''
       })
     } catch (error) {
       console.error('Erro ao carregar configurações:', error)
@@ -134,7 +128,7 @@ export default function IntegrationsPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Integrações</h1>
         <p className="mt-2 text-gray-600">
-          Configure as integrações para suas empresas
+          Configure as integrações essenciais para suas empresas
         </p>
       </div>
 
@@ -181,10 +175,10 @@ export default function IntegrationsPage() {
           {selectedCompany ? (
             <div className="space-y-6">
               {/* Dify AI */}
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold text-green-600 mb-3">🤖 Dify AI (Obrigatório)</h3>
+              <div className="border rounded-lg p-4 bg-green-50">
+                <h3 className="font-semibold text-green-700 mb-3">🤖 Dify AI (Obrigatório)</h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Configure sua API key do Dify para processamento de IA
+                  Configure sua API key do Dify para processamento de IA. O Dify já inclui OpenAI, Claude, e text-to-speech.
                 </p>
                 <div className="space-y-3">
                   <div>
@@ -200,15 +194,15 @@ export default function IntegrationsPage() {
                       }))}
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Encontre sua API key em: Dify → Seu App → API Access
+                      Encontre sua API em: Dify → API de Serviço → API Key
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* WhatsApp Evolution */}
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold text-green-600 mb-3">📱 WhatsApp Evolution API (Obrigatório)</h3>
+              {/* WhatsApp Evolution API */}
+              <div className="border rounded-lg p-4 bg-blue-50">
+                <h3 className="font-semibold text-blue-700 mb-3">📱 WhatsApp Evolution API (Opcional)</h3>
                 <p className="text-sm text-gray-600 mb-4">
                   Configure a instância do WhatsApp para sua empresa
                 </p>
@@ -231,86 +225,54 @@ export default function IntegrationsPage() {
                 </div>
               </div>
 
-              {/* Funcionalidades Opcionais */}
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold text-blue-600 mb-3">🎯 Funcionalidades Extras (Opcional)</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Funcionalidades adicionais para melhorar a experiência
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="openai_api_key">OpenAI API Key</Label>
-                    <Input
-                      id="openai_api_key"
-                      type="password"
-                      placeholder="sk-xxxxxxxxxx"
-                      value={settings.openai_api_key}
-                      onChange={(e) => setSettings(prev => ({ 
-                        ...prev, 
-                        openai_api_key: e.target.value 
-                      }))}
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Para transcrição de áudio</p>
-                  </div>
-                  <div>
-                    <Label htmlFor="elevenlabs_api_key">ElevenLabs API Key</Label>
-                    <Input
-                      id="elevenlabs_api_key"
-                      type="password"
-                      placeholder="xxxxxxxxxx"
-                      value={settings.elevenlabs_api_key}
-                      onChange={(e) => setSettings(prev => ({ 
-                        ...prev, 
-                        elevenlabs_api_key: e.target.value 
-                      }))}
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Para síntese de voz</p>
-                  </div>
+              {/* Aviso sobre funcionalidades */}
+              <div className="border rounded-lg p-4 bg-yellow-50">
+                <h3 className="font-semibold text-yellow-700 mb-3">💡 Sobre as funcionalidades</h3>
+                <div className="text-sm text-gray-600 space-y-2">
+                  <p><strong>✅ OpenAI:</strong> Já incluído no Dify (GPT-4, Claude, etc.)</p>
+                  <p><strong>✅ Text-to-Speech:</strong> Já incluído no Dify (nativo)</p>
+                  <p><strong>✅ Conversação:</strong> Gerenciado pelo Dify</p>
+                  <p><strong>🔧 WhatsApp:</strong> Opcional - para receber mensagens</p>
                 </div>
               </div>
 
-              {/* Botão Salvar */}
-              <div className="flex justify-end">
-                <Button 
-                  onClick={saveSettings} 
-                  disabled={loading || !settings.dify_api_key}
-                  className="min-w-32"
-                >
-                  {loading ? 'Salvando...' : 'Salvar Configurações'}
-                </Button>
-              </div>
+              <Button 
+                onClick={saveSettings} 
+                disabled={loading || !settings.dify_api_key}
+                className="w-full"
+              >
+                {loading ? 'Salvando...' : 'Salvar Configurações'}
+              </Button>
             </div>
           ) : (
-            <div className="text-center text-gray-500 py-8">
-              Selecione uma empresa para configurar as integrações
+            <div className="text-center py-8">
+              <p className="text-gray-500">Selecione uma empresa para configurar</p>
             </div>
           )}
         </Card>
       </div>
 
-      {/* Instruções */}
+      {/* Como Configurar */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">📋 Como Configurar</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <h2 className="text-lg font-semibold mb-4">📋 Como Configurar</h2>
+        <div className="grid md:grid-cols-2 gap-6">
           <div>
-            <h4 className="font-semibold text-green-600 mb-2">1. Dify AI</h4>
-            <ol className="text-sm text-gray-600 space-y-1 list-decimal list-inside">
-              <li>Acesse sua conta no Dify</li>
-              <li>Vá para seu app "PDC VENDAS"</li>
-              <li>Clique em "API Access"</li>
-              <li>Copie a "API Key"</li>
-              <li>Cole aqui na configuração</li>
-            </ol>
+            <h3 className="font-semibold text-blue-600 mb-2">1. Configure o Dify</h3>
+            <ul className="text-sm text-gray-600 space-y-1">
+              <li>• Acesse seu painel Dify</li>
+              <li>• Vá em "API de Serviço"</li>
+              <li>• Copie a API Key (app-xxxxx)</li>
+              <li>• Cole aqui e salve</li>
+            </ul>
           </div>
           <div>
-            <h4 className="font-semibold text-green-600 mb-2">2. Evolution API</h4>
-            <ol className="text-sm text-gray-600 space-y-1 list-decimal list-inside">
-              <li>Contrate um serviço Evolution API</li>
-              <li>Obtenha a URL e API Key</li>
-              <li>Configure no backend (.env)</li>
-              <li>Defina um nome de instância único</li>
-              <li>Conecte o WhatsApp</li>
-            </ol>
+            <h3 className="font-semibold text-green-600 mb-2">2. Teste o Chat</h3>
+            <ul className="text-sm text-gray-600 space-y-1">
+              <li>• Vá em "👥 Clientes"</li>
+              <li>• Clique na empresa</li>
+              <li>• Aba "🧪 Chat Teste"</li>
+              <li>• Comece a conversar!</li>
+            </ul>
           </div>
         </div>
       </Card>
