@@ -18,7 +18,7 @@ const evolutionService = {
         reject_call: true,
         msg_call: 'Desculpe, não posso atender chamadas.',
         webhook: {
-          url: `${process.env.WEBHOOK_BASE_URL}/api/webhook/evolution/${instanceName}`,
+          url: `${process.env.WEBHOOK_BASE_URL}/webhook/evolution/${instanceName}`,
           events: [
             'messages.upsert',
             'connection.update',

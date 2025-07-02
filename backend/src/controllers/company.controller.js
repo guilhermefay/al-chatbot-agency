@@ -244,7 +244,11 @@ const companyController = {
     } catch (error) {
       console.log('💥 DEBUG: Full error details:', error);
       logger.error('Error creating WhatsApp session:', error);
-      res.status(500).json({ error: 'Failed to create WhatsApp session' });
+      res.status(500).json({ 
+        error: 'Failed to create WhatsApp session',
+        details: error.message,
+        stack: error.stack?.substring(0, 500)
+      });
     }
   },
 
