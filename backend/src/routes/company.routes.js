@@ -12,6 +12,7 @@ router.put('/:id', validateRequest(schemas.updateCompany), companyController.upd
 router.delete('/:id', strictLimiter, companyController.deleteCompany);
 
 // WhatsApp session management
+router.get('/:id/whatsapp', companyController.getWhatsAppSession);
 router.post('/:id/whatsapp', strictLimiter, companyController.createWhatsAppSession);
 router.get('/:id/whatsapp/status', companyController.getWhatsAppStatus);
 

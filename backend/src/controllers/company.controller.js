@@ -188,6 +188,34 @@ const companyController = {
     }
   },
 
+  async getWhatsAppSession(req, res) {
+    try {
+      const { id } = req.params;
+
+      const { data: session } = await supabase
+        .from('whatsapp_sessions')
+        .select('*')
+        .eq('company_id', id)
+        .single();
+
+      if (!session) {
+        return res.status(404).json({ 
+          error: 'WhatsApp session not found',
+          hasSession: false 
+        });
+      }
+
+      res.json({
+        session,
+        hasSession: true,
+        status: session.status
+      });
+    } catch (error) {
+      logger.error('Error getting WhatsApp session:', error);
+      res.status(500).json({ error: 'Failed to get WhatsApp session' });
+    }
+  },
+
   async createWhatsAppSession(req, res) {
     try {
       const { id } = req.params;
