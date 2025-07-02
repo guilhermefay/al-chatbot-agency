@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { createClient } from '@/lib/supabase/client';
+import { createDifyClient, DifyMessage, DifyResponse } from '@/lib/dify-client';
 import { 
   Bot, 
   MessageSquare, 
@@ -22,7 +23,9 @@ import {
   ExternalLink,
   Trash2,
   Save,
-  RefreshCw
+  RefreshCw,
+  Send,
+  TestTube
 } from 'lucide-react';
 
 interface Company {
@@ -62,6 +65,12 @@ export default function CompanyDetailsPage() {
   const [whatsappStatus, setWhatsappStatus] = useState<any>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  
+  // Estados do chat teste
+  const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string, timestamp: Date}>>([]);
+  const [messageInput, setMessageInput] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   
   // Estados das configurações
   const [difyConfig, setDifyConfig] = useState({
@@ -302,6 +311,48 @@ export default function CompanyDetailsPage() {
     }
   };
 
+  const sendChatMessage = async () => {
+    if (!messageInput.trim() || !company?.dify_api_key) return;
+
+    setSendingMessage(true);
+    const userMessage = { role: 'user' as const, content: messageInput, timestamp: new Date() };
+    setChatMessages(prev => [...prev, userMessage]);
+    setMessageInput('');
+
+    try {
+      const difyClient = createDifyClient(company.dify_api_key);
+      const response = await difyClient.sendMessage(messageInput, conversationId || undefined);
+      
+      // Salvar conversation_id para próximas mensagens
+      if (response.conversation_id && !conversationId) {
+        setConversationId(response.conversation_id);
+      }
+
+      const assistantMessage = { 
+        role: 'assistant' as const, 
+        content: response.answer, 
+        timestamp: new Date() 
+      };
+      setChatMessages(prev => [...prev, assistantMessage]);
+
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error);
+      const errorMessage = { 
+        role: 'assistant' as const, 
+        content: '❌ Erro ao enviar mensagem. Verifique se a API Key do Dify está correta.', 
+        timestamp: new Date() 
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  const clearChat = () => {
+    setChatMessages([]);
+    setConversationId(null);
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -395,6 +446,17 @@ export default function CompanyDetailsPage() {
           >
             <MessageSquare className="h-4 w-4 inline mr-2" />
             Conversas ({conversations.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('chat-test')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'chat-test'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <TestTube className="h-4 w-4 inline mr-2" />
+            Chat Teste
           </button>
         </nav>
       </div>
@@ -691,6 +753,191 @@ export default function CompanyDetailsPage() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'chat-test' && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold">Teste do Chatbot Dify</h3>
+            <div className="flex gap-2">
+              {company.dify_api_key ? (
+                <Badge className="bg-green-100 text-green-800">
+                  ✅ Dify Conectado
+                </Badge>
+              ) : (
+                <Badge className="bg-red-100 text-red-800">
+                  ❌ Configure Dify primeiro
+                </Badge>
+              )}
+              <Button variant="outline" onClick={clearChat} disabled={chatMessages.length === 0}>
+                Limpar Chat
+              </Button>
+            </div>
+          </div>
+
+          {!company.dify_api_key ? (
+            <Card>
+              <CardContent className="text-center py-12">
+                <Bot className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Configure o Dify primeiro
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Vá para a aba <strong>Integrações</strong> e configure sua API Key do Dify
+                </p>
+                <Button onClick={() => setActiveTab('integrations')}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Ir para Integrações
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Chat Interface */}
+              <div className="lg:col-span-2">
+                <Card className="h-[600px] flex flex-col">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center">
+                      <Bot className="h-5 w-5 mr-2 text-blue-600" />
+                      Chat com {company.name}
+                    </CardTitle>
+                    <CardDescription>
+                      Teste o chatbot em tempo real usando sua API do Dify
+                    </CardDescription>
+                  </CardHeader>
+                  
+                  {/* Messages */}
+                  <CardContent className="flex-1 overflow-y-auto space-y-4">
+                    {chatMessages.length === 0 ? (
+                      <div className="text-center py-8">
+                        <MessageSquare className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                        <p className="text-gray-600">
+                          Envie uma mensagem para começar a conversa
+                        </p>
+                      </div>
+                    ) : (
+                      chatMessages.map((message, index) => (
+                        <div 
+                          key={index} 
+                          className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div className={`max-w-[80%] p-3 rounded-lg ${
+                            message.role === 'user' 
+                              ? 'bg-blue-600 text-white' 
+                              : 'bg-gray-100 text-gray-900'
+                          }`}>
+                            <p className="text-sm">{message.content}</p>
+                            <div className={`text-xs mt-1 ${
+                              message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
+                            }`}>
+                              {message.timestamp.toLocaleTimeString()}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+
+                  {/* Input */}
+                  <div className="p-4 border-t">
+                    <div className="flex space-x-2">
+                      <Input
+                        value={messageInput}
+                        onChange={(e) => setMessageInput(e.target.value)}
+                        placeholder="Digite sua mensagem..."
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter' && !sendingMessage) {
+                            sendChatMessage();
+                          }
+                        }}
+                        disabled={sendingMessage}
+                      />
+                      <Button 
+                        onClick={sendChatMessage} 
+                        disabled={!messageInput.trim() || sendingMessage}
+                      >
+                        {sendingMessage ? (
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Chat Info */}
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Informações da Sessão</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Mensagens:</span>
+                      <span className="font-medium">{chatMessages.length}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Conversa ID:</span>
+                      <span className="font-mono text-xs truncate">
+                        {conversationId || 'Nova conversa'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Status:</span>
+                      <Badge className="bg-green-100 text-green-800 text-xs">
+                        Ativo
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Mensagens Exemplo</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {[
+                      'Olá, como você pode me ajudar?',
+                      'Quais são seus serviços?',
+                      'Como posso agendar uma reunião?',
+                      'Preciso de mais informações'
+                    ].map((example, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setMessageInput(example)}
+                        className="w-full text-left p-2 text-sm bg-gray-50 hover:bg-gray-100 rounded border text-gray-700"
+                      >
+                        "{example}"
+                      </button>
+                    ))}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Configuração Ativa</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="text-xs">
+                      <div className="text-gray-600">API Key:</div>
+                      <div className="font-mono bg-gray-100 p-1 rounded truncate">
+                        {company.dify_api_key?.substring(0, 20)}...
+                      </div>
+                    </div>
+                    <div className="text-xs">
+                      <div className="text-gray-600">Endpoint:</div>
+                      <div className="font-mono bg-gray-100 p-1 rounded text-xs">
+                        https://api.dify.ai/v1
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           )}
         </div>

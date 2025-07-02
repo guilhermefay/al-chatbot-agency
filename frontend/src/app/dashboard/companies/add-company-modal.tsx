@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
-import { X, User, CheckCircle } from 'lucide-react';
+import { X, User, CheckCircle, Bot, Key } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 interface AddCompanyModalProps {
   isOpen: boolean;
@@ -22,14 +23,17 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }: AddCompanyModalP
   const [companyData, setCompanyData] = useState({
     name: '',
     email: '',
-    whatsapp: '',
-    plan: 'basic'
+    phone: '',
+    plan: 'basic',
+    dify_api_key: ''
   });
+
+  const supabase = createClient();
 
   const handleNext = () => {
     if (step === 1) {
       // Validação básica
-      if (!companyData.name || !companyData.email || !companyData.whatsapp) {
+      if (!companyData.name || !companyData.email || !companyData.phone) {
         alert('Preencha todos os campos obrigatórios');
         return;
       }
@@ -40,22 +44,42 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }: AddCompanyModalP
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      // Criar empresa
-      const response = await fetch('/api/companies', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...companyData,
-          status: 'active'
-        })
-      });
+      // Validar Dify API Key
+      if (!companyData.dify_api_key) {
+        alert('API Key do Dify é obrigatória');
+        setLoading(false);
+        return;
+      }
 
-      if (!response.ok) throw new Error('Erro ao criar empresa');
+      // Criar empresa no Supabase
+      const { data, error } = await supabase
+        .from('companies')
+        .insert([{
+          name: companyData.name,
+          email: companyData.email,
+          phone: companyData.phone,
+          plan: companyData.plan,
+          status: 'active',
+          dify_api_key: companyData.dify_api_key,
+          features: {
+            whatsapp: true,
+            voice: false,
+            dify: true
+          }
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
       
       setStep(3);
+      setTimeout(() => {
+        onSuccess();
+        handleClose();
+      }, 2000);
     } catch (error) {
       console.error('Erro:', error);
-      alert('Erro ao criar empresa');
+      alert('Erro ao criar empresa: ' + (error as Error).message);
     } finally {
       setLoading(false);
     }
@@ -66,8 +90,9 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }: AddCompanyModalP
     setCompanyData({
       name: '',
       email: '',
-      whatsapp: '',
-      plan: 'basic'
+      phone: '',
+      plan: 'basic',
+      dify_api_key: ''
     });
     onClose();
   };
@@ -81,8 +106,8 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }: AddCompanyModalP
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b">
             <div className="flex items-center space-x-3">
-              <User className="h-6 w-6 text-blue-600" />
-              <h2 className="text-lg font-semibold">Adicionar Novo Cliente & Chatbot</h2>
+              <Bot className="h-6 w-6 text-blue-600" />
+              <h2 className="text-lg font-semibold">Novo Cliente + Chatbot Dify</h2>
             </div>
             <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
               <X className="h-5 w-5" />
@@ -102,11 +127,11 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }: AddCompanyModalP
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
                   2
                 </div>
-                <span className="text-sm font-medium">Integração</span>
+                <span className="text-sm font-medium">Dify API</span>
               </div>
               <div className={`flex items-center space-x-2 ${step >= 3 ? 'text-green-600' : 'text-gray-400'}`}>
                 <CheckCircle className="w-5 h-5" />
-                <span className="text-sm font-medium">Concluído</span>
+                <span className="text-sm font-medium">Pronto</span>
               </div>
             </div>
           </div>
@@ -121,7 +146,7 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }: AddCompanyModalP
                     id="name"
                     value={companyData.name}
                     onChange={(e) => setCompanyData({...companyData, name: e.target.value})}
-                    placeholder="Ex: Guilherme Fay"
+                    placeholder="Ex: Guilherme Fay Consultoria"
                   />
                 </div>
 
@@ -132,34 +157,69 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }: AddCompanyModalP
                     type="email"
                     value={companyData.email}
                     onChange={(e) => setCompanyData({...companyData, email: e.target.value})}
-                    placeholder="Ex: guilhermefay@hotmail.com"
+                    placeholder="Ex: contato@empresa.com"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="whatsapp">Telefone WhatsApp *</Label>
+                  <Label htmlFor="phone">Telefone WhatsApp *</Label>
                   <Input
-                    id="whatsapp"
-                    value={companyData.whatsapp}
-                    onChange={(e) => setCompanyData({...companyData, whatsapp: e.target.value})}
+                    id="phone"
+                    value={companyData.phone}
+                    onChange={(e) => setCompanyData({...companyData, phone: e.target.value})}
                     placeholder="Ex: 34991533667"
                   />
+                </div>
+
+                <div>
+                  <Label htmlFor="plan">Plano</Label>
+                  <select 
+                    value={companyData.plan}
+                    onChange={(e) => setCompanyData({...companyData, plan: e.target.value})}
+                    className="w-full p-2 border rounded-md"
+                  >
+                    <option value="basic">Básico</option>
+                    <option value="premium">Premium</option>
+                  </select>
                 </div>
               </div>
             )}
 
             {step === 2 && (
               <div className="space-y-4">
-                <div className="text-center py-8">
+                <div className="text-center mb-6">
                   <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <User className="w-8 h-8 text-blue-600" />
+                    <Key className="w-8 h-8 text-blue-600" />
                   </div>
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    Configurar APIs
+                    Configurar Dify API
                   </h3>
-                  <p className="text-gray-600">
-                    Configure as chaves API do Dify e Evolution para {companyData.name}
+                  <p className="text-gray-600 text-sm">
+                    Cole sua API Key do Dify para integrar o chatbot
                   </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="dify_api_key">Dify API Key *</Label>
+                  <Input
+                    id="dify_api_key"
+                    value={companyData.dify_api_key}
+                    onChange={(e) => setCompanyData({...companyData, dify_api_key: e.target.value})}
+                    placeholder="app-xxxxxxxxxxxxxxxxxxxxxx"
+                    className="font-mono text-sm"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Exemplo: app-oDEcLLCXulN9PZccPXEDJD4q
+                  </p>
+                </div>
+
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <h4 className="font-semibold text-sm mb-2">Como obter a API Key:</h4>
+                  <ol className="text-xs text-gray-600 list-decimal list-inside space-y-1">
+                    <li>Acesse <strong>dify.ai</strong></li>
+                    <li>Vá em <strong>API de Serviço</strong></li>
+                    <li>Copie a chave que começa com "app-"</li>
+                  </ol>
                 </div>
               </div>
             )}
@@ -170,13 +230,15 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }: AddCompanyModalP
                   <CheckCircle className="w-8 h-8 text-green-600" />
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  Chatbot Criado!
+                  🎉 Chatbot Criado!
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  {companyData.name} foi adicionado com sucesso
+                  <strong>{companyData.name}</strong> foi configurado com sucesso
                 </p>
                 <p className="text-sm text-gray-500">
-                  Configure as APIs na aba <strong>Integrações</strong>
+                  ✅ Dify integrado<br/>
+                  ✅ Cliente adicionado<br/>
+                  🔄 WhatsApp pendente (próximo passo)
                 </p>
               </div>
             )}
@@ -185,24 +247,18 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }: AddCompanyModalP
           {/* Footer */}
           <div className="px-6 py-4 border-t bg-gray-50 flex justify-between">
             <Button variant="secondary" onClick={handleClose}>
-              Cancelar
+              {step === 3 ? 'Fechar' : 'Cancelar'}
             </Button>
             
             {step === 1 && (
               <Button onClick={handleNext}>
-                Próximo
+                Próximo →
               </Button>
             )}
             
             {step === 2 && (
               <Button onClick={handleSubmit} disabled={loading}>
-                {loading ? 'Criando...' : 'Criar Chatbot'}
-              </Button>
-            )}
-            
-            {step === 3 && (
-              <Button onClick={() => { onSuccess(); handleClose(); }}>
-                Concluir
+                {loading ? 'Criando...' : '🚀 Criar Chatbot'}
               </Button>
             )}
           </div>
