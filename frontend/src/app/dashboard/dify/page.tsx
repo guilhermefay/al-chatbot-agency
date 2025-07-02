@@ -36,7 +36,7 @@ interface DifyMessage {
     inputs: any;
     query: string;
     answer: string;
-    feedback?: 'like' | 'dislike';
+    feedback?: 'like' | 'dislike' | null;
     agent_thoughts?: any[];
     retriever_resources?: any[];
   };
@@ -156,7 +156,12 @@ export default function DifyPage() {
       if (data.success) {
         setMessages(prev => prev.map(m => 
           m.id === messageId 
-            ? { ...m, dify_data: { ...m.dify_data, feedback: rating } }
+            ? { 
+                ...m, 
+                dify_data: m.dify_data 
+                  ? { ...m.dify_data, feedback: rating }
+                  : { inputs: {}, query: '', answer: '', feedback: rating }
+              }
             : m
         ));
       }
