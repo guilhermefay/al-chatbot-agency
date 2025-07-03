@@ -71,4 +71,4 @@ app.use(errorHandler);
 
 module.exports = app; 
 
-// Railway sync fix - v3 
+// Railway sync fix - v3 # Force Railway redeploy - Wed Jul  2 23:55:57 -03 2025
