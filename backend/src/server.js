@@ -20,8 +20,13 @@ app.set('trust proxy', true);
 app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? true // Permite qualquer domínio em produção (Railway)
-    : ['http://localhost:3000'],
+    ? [
+        'https://frontend-orpin-three-62.vercel.app',
+        'https://al-studio.vercel.app',
+        'http://localhost:3000',
+        'http://localhost:3001'
+      ]
+    : ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true
 }));
 
