@@ -594,26 +594,37 @@ export default function CompanyDetailsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="bg-blue-50 p-3 rounded-lg mb-4">
+                  <p className="text-sm text-blue-800">
+                    <strong>Como obter:</strong> Acesse seu painel do Dify → API de Serviço → API Key
+                  </p>
+                </div>
                 <div>
-                  <Label htmlFor="dify-key">API Key</Label>
+                  <Label htmlFor="dify-key">API Key do Dify *</Label>
                   <Input
                     id="dify-key"
                     type="password"
                     value={difyConfig.api_key}
                     onChange={(e) => setDifyConfig({...difyConfig, api_key: e.target.value})}
-                    placeholder="sk-..."
+                    placeholder="app-..."
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Sua chave de API do Dify (obrigatória)
+                  </p>
                 </div>
                 <div>
-                  <Label htmlFor="dify-app">App ID</Label>
+                  <Label htmlFor="dify-app">App ID (Opcional)</Label>
                   <Input
                     id="dify-app"
                     value={difyConfig.app_id}
                     onChange={(e) => setDifyConfig({...difyConfig, app_id: e.target.value})}
-                    placeholder="app-..."
+                    placeholder="Deixe vazio para usar padrão"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    ID específico do app (opcional)
+                  </p>
                 </div>
-                <Button onClick={saveDifyConfig} disabled={saving}>
+                <Button onClick={saveDifyConfig} disabled={saving || !difyConfig.api_key.trim()}>
                   <Save className="h-4 w-4 mr-2" />
                   {saving ? 'Salvando...' : 'Salvar Configuração'}
                 </Button>

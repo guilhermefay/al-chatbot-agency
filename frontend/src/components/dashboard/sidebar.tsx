@@ -7,23 +7,16 @@ import {
   Users, 
   Settings, 
   MessageSquare, 
-  Cog,
-  Plug
+  Cog
 } from 'lucide-react'
 
-// Sidebar limpo com 4 abas essenciais - Force deploy v3 - FINAL
+// Sidebar limpo com 3 abas essenciais
 const navigation = [
   {
     name: 'Clientes',
     href: '/dashboard/companies',
     icon: Users,
     description: 'Gerenciar clientes e chatbots'
-  },
-  {
-    name: 'Integrações',
-    href: '/dashboard/integrations',
-    icon: Plug,
-    description: 'WhatsApp, Dify, CRM, Agenda'
   },
   {
     name: 'Conversas',
