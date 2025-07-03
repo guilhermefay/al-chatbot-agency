@@ -206,10 +206,8 @@ const messageChunkerService = {
    */
   processSentences(sentences, maxLength, chunks, metadata, contentType, strategy) {
     let currentChunk = '';
-        
-        for (const sentence of sentences) {
-        
-        for (const sentence of sentences) {
+    
+    for (const sentence of sentences) {
       // Se a frase sozinha já é muito grande, quebra por palavras
       if (sentence.length > maxLength) {
         if (currentChunk) {
