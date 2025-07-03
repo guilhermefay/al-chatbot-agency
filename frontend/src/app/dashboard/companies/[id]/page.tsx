@@ -28,6 +28,10 @@ import {
   TestTube
 } from 'lucide-react';
 
+interface VoiceConfig {
+  always_voice?: boolean;
+}
+
 interface Company {
   id: string;
   name: string;
@@ -41,6 +45,7 @@ interface Company {
   whatsapp_sessions?: any[];
   conversations?: any[];
   tools_config?: any[];
+  voice_config?: VoiceConfig;
 }
 
 interface Conversation {
@@ -432,7 +437,7 @@ export default function CompanyDetailsPage() {
     }
   };
 
-  const updateVoiceConfig = async (newVoiceConfig) => {
+  const updateVoiceConfig = async (newVoiceConfig: Partial<VoiceConfig>) => {
     try {
       setSaving(true);
       
