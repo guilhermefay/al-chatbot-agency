@@ -193,6 +193,77 @@ const conversationController = {
   },
 
   /**
+   * Envia mensagem para conversa (simula mensagem do usuário)
+   * POST /api/conversations/:id/messages
+   */
+  async sendMessage(req, res) {
+    try {
+      const { id } = req.params;
+      const { content, role } = req.body;
+
+      // Buscar conversa
+      const { data: conversation, error: convError } = await supabase
+        .from('conversations')
+        .select('*, companies(id, dify_api_key), whatsapp_sessions!inner(evolution_instance)')
+        .eq('id', id)
+        .single();
+
+      if (convError || !conversation) {
+        return res.status(404).json({ error: 'Conversa não encontrada' });
+      }
+
+      // Salvar mensagem no banco
+      const { data: savedMessage, error: saveError } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: id,
+          role,
+          content,
+          timestamp: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (saveError) throw saveError;
+
+      // Se for mensagem do usuário, processar com Dify e enviar pelo WhatsApp
+      if (role === 'user' && conversation.companies.dify_api_key) {
+        const { messageService } = require('../services/message.service');
+        
+        // Simular dados do webhook do WhatsApp
+        const mockMessageData = {
+          key: {
+            remoteJid: `${conversation.contact}@s.whatsapp.net`,
+            fromMe: false,
+            id: `mock_${Date.now()}`
+          },
+          message: {
+            conversation: content
+          },
+          pushName: conversation.contact_name || conversation.contact
+        };
+
+        // Processar mensagem através do serviço
+        const instanceName = conversation.whatsapp_sessions[0]?.evolution_instance;
+        if (instanceName) {
+          await messageService.handleIncomingMessage(instanceName, mockMessageData);
+        }
+      }
+
+      logger.info(`Mensagem enviada para conversa ${id}: ${role} - ${content}`);
+      
+      res.status(201).json({
+        success: true,
+        data: savedMessage
+      });
+
+    } catch (error) {
+      logger.error('Erro ao enviar mensagem:', error);
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  },
+
+  /**
    * Submete feedback para uma mensagem
    * POST /api/messages/:messageId/feedback
    */

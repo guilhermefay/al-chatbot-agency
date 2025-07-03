@@ -59,10 +59,7 @@ export default function CompanyDetailsPage() {
   const searchParams = useSearchParams();
   const { id } = params;
   
-  // FORÇAR URL ABSOLUTA - CORREÇÃO TEMPORÁRIA v2
   const API_BASE_URL = 'https://backend-api-final-production.up.railway.app/api';
-  console.log('🔥 FORÇANDO API_BASE_URL v2:', API_BASE_URL);
-  alert('🔥 FORÇANDO URL v2: ' + API_BASE_URL);
   
   const [company, setCompany] = useState<Company | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -204,7 +201,6 @@ export default function CompanyDetailsPage() {
 
   const checkWhatsAppStatus = async () => {
     try {
-      console.log('🔥 FORÇANDO checkWhatsAppStatus URL:', `${API_BASE_URL}/companies/${id}/whatsapp/status`);
       const response = await fetch(`${API_BASE_URL}/companies/${id}/whatsapp/status`);
       const data = await response.json();
       setWhatsappStatus(data);
@@ -215,34 +211,21 @@ export default function CompanyDetailsPage() {
 
   const createWhatsAppSession = async () => {
     try {
-      alert('🚀 FUNÇÃO CHAMADA! Criando sessão WhatsApp...');
       setSaving(true);
-      console.log('🟡 Criando sessão WhatsApp para empresa:', id);
-      console.log('🟡 URL chamada:', `${API_BASE_URL}/companies/${id}/whatsapp`);
       
       const response = await fetch(`${API_BASE_URL}/companies/${id}/whatsapp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
 
-      console.log('🟡 Response status:', response.status);
-      console.log('🟡 Response ok:', response.ok);
-
       const data = await response.json();
-      console.log('🟡 Resposta completa da criação de sessão:', JSON.stringify(data, null, 2));
       
       if (response.ok) {
-        alert('✅ Sessão criada com sucesso! Verificando QR Code...');
-        
         // Acessar QR code corretamente da resposta
         const qrCodeFromResponse = data.session?.qr_code || data.qr_code;
-        console.log('🟡 QR Code na resposta:', qrCodeFromResponse);
         
         if (qrCodeFromResponse) {
-          console.log('🟢 QR Code encontrado, definindo...');
           setQrCode(qrCodeFromResponse);
-        } else {
-          console.log('🟡 QR Code não encontrado na resposta, iniciando polling...');
         }
         
         // Atualizar status local
@@ -250,7 +233,6 @@ export default function CompanyDetailsPage() {
           status: data.session?.status || 'disconnected',
           phone_number: data.session?.phone_number || null
         };
-        console.log('🟡 Novo status WhatsApp:', newStatus);
         setWhatsappStatus(newStatus);
         
         // Iniciar polling para verificar conexão e obter QR Code
@@ -260,64 +242,47 @@ export default function CompanyDetailsPage() {
         const pollForQrAndStatus = setInterval(async () => {
           try {
             pollCount++;
-            console.log(`🔄 Polling ${pollCount}/${maxPolls} - Verificando status...`);
             
             const statusResponse = await fetch(`${API_BASE_URL}/companies/${id}/whatsapp/status`);
             
             // Verificar se a resposta foi bem-sucedida
             if (!statusResponse.ok) {
-              if (statusResponse.status === 429) {
-                console.log('⚠️ Rate limit atingido, aguardando...');
-                return; // Pular esta iteração
-              }
-              if (statusResponse.status === 404) {
-                console.log('⚠️ Sessão não encontrada ainda, aguardando...');
+              if (statusResponse.status === 429 || statusResponse.status === 404) {
                 return; // Pular esta iteração
               }
               throw new Error(`Status ${statusResponse.status}`);
             }
             
             const statusData = await statusResponse.json();
-            console.log(`🔄 Status atualizado (poll ${pollCount}):`, statusData);
-            
             setWhatsappStatus(statusData);
             
             // Se tiver QR code na resposta, usar ele
             if (statusData.qr_code && !qrCode) {
-              console.log('🟢 QR Code encontrado no polling!');
               setQrCode(statusData.qr_code);
             }
             
             // Se conectou, parar o polling
             if (statusData.status === 'open') {
-              console.log('🟢 WhatsApp conectado! Parando polling...');
               clearInterval(pollForQrAndStatus);
               setQrCode(null); // Limpar QR code quando conectar
-              alert('🎉 WhatsApp conectado com sucesso!');
               return;
             }
             
             // Parar polling após tentativas máximas
             if (pollCount >= maxPolls) {
-              console.log('⏰ Polling finalizado por timeout');
               clearInterval(pollForQrAndStatus);
             }
           } catch (error) {
-            console.error('❌ Erro no polling:', error);
+            console.error('Erro no polling:', error);
           }
-        }, 10000); // 10 segundos de intervalo em vez de 3
-        
-        console.log('✅ Sessão WhatsApp criada com sucesso, polling iniciado');
+        }, 10000);
       } else {
-        console.error('❌ Erro na resposta:', data);
-        alert('❌ Erro ao criar sessão WhatsApp: ' + (data.error || data.message || 'Erro desconhecido'));
+        console.error('Erro na resposta:', data);
       }
     } catch (error) {
-      console.error('❌ Erro ao criar sessão WhatsApp:', error);
-      alert('❌ ERRO FATAL: ' + (error as Error).message + ' - Verifique o console para mais detalhes.');
+      console.error('Erro ao criar sessão WhatsApp:', error);
     } finally {
       setSaving(false);
-      console.log('🔵 setSaving(false) - Finalizando função');
     }
   };
 
@@ -336,11 +301,10 @@ export default function CompanyDetailsPage() {
 
       if (error) throw error;
       
-      alert('Configuração Dify salva com sucesso!');
+      // Configuração Dify salva com sucesso
       await fetchCompanyDetails();
     } catch (error) {
       console.error('Erro ao salvar Dify:', error);
-      alert('Erro ao salvar configuração Dify');
     } finally {
       setSaving(false);
     }
@@ -365,10 +329,9 @@ export default function CompanyDetailsPage() {
 
       if (error) throw error;
       
-      alert('Configuração Google Calendar salva!');
+      // Configuração Google Calendar salva
     } catch (error) {
       console.error('Erro ao salvar Calendar:', error);
-      alert('Erro ao salvar configuração');
     } finally {
       setSaving(false);
     }
@@ -394,10 +357,9 @@ export default function CompanyDetailsPage() {
 
       if (error) throw error;
       
-      alert('Configuração CRM salva!');
+      // Configuração CRM salva
     } catch (error) {
       console.error('Erro ao salvar CRM:', error);
-      alert('Erro ao salvar configuração');
     } finally {
       setSaving(false);
     }
@@ -793,7 +755,7 @@ export default function CompanyDetailsPage() {
       {activeTab === 'conversations' && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Conversas Recentes</h3>
+            <h3 className="text-lg font-semibold">Conversas desta Empresa</h3>
             <Button variant="outline" onClick={fetchConversations}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Atualizar
@@ -808,42 +770,72 @@ export default function CompanyDetailsPage() {
                   Nenhuma conversa ainda
                 </h3>
                 <p className="text-gray-600">
-                  As conversas aparecerão aqui após configurar as integrações
+                  As conversas do WhatsApp aparecerão aqui automaticamente
                 </p>
+                <div className="mt-4">
+                  <Button 
+                    onClick={() => setActiveTab('integrations')} 
+                    variant="outline"
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Configurar WhatsApp
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-3">
               {conversations.map((conversation) => (
-                <Card key={conversation.id} className="hover:shadow-md transition-shadow">
+                <Card 
+                  key={conversation.id} 
+                  className="hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => window.open(`/dashboard/conversations/${conversation.id}`, '_blank')}
+                >
                   <CardContent className="p-4">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
-                          <h4 className="font-medium">{conversation.contact_name}</h4>
+                          <h4 className="font-medium">{conversation.contact_name || conversation.contact_phone}</h4>
                           <Badge variant="outline" className="text-xs">
-                            {conversation.platform}
+                            {conversation.platform || 'WhatsApp'}
                           </Badge>
                           <Badge className={`text-xs ${
-                            conversation.status === 'open' 
+                            conversation.status === 'active' 
                               ? 'bg-green-100 text-green-800'
                               : 'bg-gray-100 text-gray-800'
                           }`}>
-                            {conversation.status}
+                            {conversation.status === 'active' ? 'Ativa' : 'Inativa'}
                           </Badge>
                         </div>
                         <p className="text-gray-600 text-sm mb-2">
-                          {conversation.contact_phone}
+                          {conversation.contact_phone || conversation.contact}
                         </p>
                         <p className="text-gray-800 text-sm line-clamp-2">
-                          {conversation.last_message}
+                          {conversation.last_message || 'Nenhuma mensagem ainda'}
                         </p>
                       </div>
                       <div className="text-right text-sm text-gray-500">
-                        <div>{new Date(conversation.last_message_at).toLocaleDateString()}</div>
-                        <div className="text-xs mt-1">
-                          {conversation.messages_count} mensagens
+                        <div>
+                          {conversation.last_message_at 
+                            ? new Date(conversation.last_message_at).toLocaleDateString()
+                            : 'Hoje'
+                          }
                         </div>
+                        <div className="text-xs mt-1">
+                          {conversation.messages_count || 0} mensagens
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="mt-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(`/dashboard/conversations/${conversation.id}`, '_blank');
+                          }}
+                        >
+                          <MessageSquare className="h-3 w-3 mr-1" />
+                          Abrir Chat
+                        </Button>
                       </div>
                     </div>
                   </CardContent>

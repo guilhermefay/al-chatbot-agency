@@ -11,6 +11,18 @@ router.get('/', conversationController.getConversations);
 // Obtém histórico completo de mensagens de uma conversa (local + Dify)
 router.get('/:id/messages', conversationController.getConversationMessages);
 
+// Envia mensagem para conversa (simula mensagem do usuário)
+router.post('/:id/messages', validateRequest({
+  body: {
+    type: 'object',
+    required: ['content', 'role'],
+    properties: {
+      content: { type: 'string', minLength: 1, maxLength: 5000 },
+      role: { type: 'string', enum: ['user', 'assistant'] }
+    }
+  }
+}), conversationController.sendMessage);
+
 // Deleta conversa (local e Dify)
 router.delete('/:id', conversationController.deleteConversation);
 

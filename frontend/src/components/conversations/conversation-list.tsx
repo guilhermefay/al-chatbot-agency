@@ -13,8 +13,12 @@ interface ConversationWithCompany {
   id: string
   contact: string
   contact_name?: string
+  contact_phone?: string
+  platform: string
   status: string
   created_at: string
+  updated_at: string
+  company_id: string
   last_message?: {
     content: string
     timestamp: string
@@ -23,18 +27,36 @@ interface ConversationWithCompany {
   company: {
     name: string
   }
+  unread_count?: number
 }
 
 export function ConversationList() {
   const [conversations, setConversations] = useState<ConversationWithCompany[]>([])
+  const [companies, setCompanies] = useState<Array<{id: string, name: string}>>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [companyFilter, setCompanyFilter] = useState('all')
   const supabase = createClient()
 
   useEffect(() => {
     fetchConversations()
+    fetchCompanies()
   }, [])
+
+  const fetchCompanies = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id, name')
+        .order('name')
+
+      if (error) throw error
+      setCompanies(data || [])
+    } catch (error) {
+      console.error('Error fetching companies:', error)
+    }
+  }
 
   const fetchConversations = async () => {
     try {
@@ -42,18 +64,30 @@ export function ConversationList() {
         .from('conversations')
         .select(`
           *,
-          companies (name),
-          messages (content, timestamp, role)
+          companies (name)
         `)
         .order('updated_at', { ascending: false })
 
       if (error) throw error
 
-      const processedData = data?.map(conv => ({
-        ...conv,
-        company: conv.companies,
-        last_message: conv.messages?.[0]
-      })) || []
+      // Buscar última mensagem para cada conversa separadamente
+      const processedData = await Promise.all(
+        (data || []).map(async (conv) => {
+          const { data: lastMessage } = await supabase
+            .from('messages')
+            .select('content, timestamp, role')
+            .eq('conversation_id', conv.id)
+            .order('timestamp', { ascending: false })
+            .limit(1)
+            .single();
+
+          return {
+            ...conv,
+            company: conv.companies,
+            last_message: lastMessage || null
+          };
+        })
+      );
 
       setConversations(processedData)
     } catch (error) {
@@ -67,7 +101,8 @@ export function ConversationList() {
     const matchesSearch = conv.contact.includes(searchTerm) || 
                          conv.contact_name?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || conv.status === statusFilter
-    return matchesSearch && matchesStatus
+    const matchesCompany = companyFilter === 'all' || conv.company_id === companyFilter
+    return matchesSearch && matchesStatus && matchesCompany
   })
 
   if (loading) {
@@ -86,6 +121,19 @@ export function ConversationList() {
             className="pl-10"
           />
         </div>
+        <Select value={companyFilter} onValueChange={setCompanyFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Filtrar por empresa" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas empresas</SelectItem>
+            {companies.map((company) => (
+              <SelectItem key={company.id} value={company.id}>
+                {company.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Filtrar por status" />
@@ -121,12 +169,25 @@ export function ConversationList() {
                       {conversation.contact_name || conversation.contact}
                     </h3>
                     <span className="text-sm text-gray-500">• {conversation.company.name}</span>
+                    {conversation.platform && (
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                        {conversation.platform}
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm text-gray-500 mt-1">{conversation.contact}</p>
                   {conversation.last_message && (
-                    <p className="text-sm text-gray-600 mt-2">
-                      {conversation.last_message.role === 'user' ? '👤' : '🤖'} {conversation.last_message.content}
-                    </p>
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-600">
+                        {conversation.last_message.role === 'user' ? '👤' : '🤖'} {conversation.last_message.content}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {formatDistanceToNow(new Date(conversation.last_message.timestamp), {
+                          addSuffix: true,
+                          locale: ptBR,
+                        })}
+                      </p>
+                    </div>
                   )}
                 </div>
                 <div className="text-right">

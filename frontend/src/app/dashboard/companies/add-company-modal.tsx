@@ -31,7 +31,7 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }: AddCompanyModalP
   const handleNext = () => {
     if (step === 1) {
       if (!companyData.name || !companyData.email) {
-        alert('Preencha nome e email da empresa');
+        // TODO: Show user-friendly error message instead of console.warn
         return;
       }
     }
@@ -43,7 +43,7 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }: AddCompanyModalP
     try {
       // Validar Dify API Key
       if (!companyData.dify_api_key) {
-        alert('API Key do Dify é obrigatória');
+        // TODO: Show user-friendly error message instead of console.warn
         setLoading(false);
         return;
       }
@@ -74,8 +74,8 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }: AddCompanyModalP
         handleClose();
       }, 2000);
     } catch (error) {
-      console.error('Erro:', error);
-      alert('Erro ao criar empresa: ' + (error as Error).message);
+      // TODO: Show user-friendly error message instead of console.error
+      // Error: (error as Error).message
     } finally {
       setLoading(false);
     }

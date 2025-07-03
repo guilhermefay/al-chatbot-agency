@@ -23,11 +23,8 @@ export default function DebugPage() {
   const testLogin = async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: 'guilhermeefay@gmail.com',
-        password: 'Orygen@2023'
-      })
-      setResult(JSON.stringify({ data, error }, null, 2))
+      // Login test removed for security - credentials should never be hardcoded
+      setResult('Login test disabled - use proper authentication flow')
     } catch (err) {
       setResult(JSON.stringify(err, null, 2))
     } finally {
