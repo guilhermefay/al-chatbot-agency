@@ -8,25 +8,64 @@ const { messageChunkerService } = require('./messageChunker.service');
 const messageService = {
   async handleIncomingMessage(instanceId, messageData) {
     try {
+      logger.info(`📨 Received webhook for instance ${instanceId}:`, JSON.stringify(messageData, null, 2));
+      
       const { key, message, pushName } = messageData;
       
+      // Validate required data
+      if (!key || !message) {
+        logger.warn('Invalid message data - missing key or message');
+        return;
+      }
+      
       // Ignore non-user messages
-      if (key.fromMe || !message) return;
-
-      // Get company by Evolution instance
-      const { data: company } = await supabase
-        .from('whatsapp_sessions')
-        .select('company_id, companies(*)')
-        .eq('evolution_instance', instanceId)
-        .single();
-
-      if (!company) {
-        logger.error(`No company found for instance ${instanceId}`);
+      if (key.fromMe || !message) {
+        logger.info('Ignoring message from self or empty message');
         return;
       }
 
-      const companyData = company.companies;
+      // Get company by Evolution instance
+      const { data: whatsappSession, error: sessionError } = await supabase
+        .from('whatsapp_sessions')
+        .select(`
+          company_id, 
+          companies(
+            id, name, dify_api_key, dify_enabled, features, voice_config
+          )
+        `)
+        .eq('evolution_instance', instanceId)
+        .single();
+
+      if (sessionError || !whatsappSession) {
+        logger.error(`❌ No company found for instance ${instanceId}:`, sessionError);
+        return;
+      }
+
+      const companyData = whatsappSession.companies;
       const contact = key.remoteJid.split('@')[0];
+      
+      logger.info(`🏢 Processing message for company: ${companyData.name} (${companyData.id})`);
+      logger.info(`👤 Contact: ${contact} (${pushName || 'No name'})`);
+      
+      // Check if Dify is enabled for this company
+      if (!companyData.dify_enabled) {
+        logger.info(`🚫 Dify disabled for company ${companyData.name} - skipping AI response`);
+        
+        // Still save the conversation and message for manual handling
+        const conversation = await this.getOrCreateConversation(
+          companyData.id,
+          contact,
+          pushName
+        );
+        
+        const processedMessage = message.conversation || message.extendedTextMessage?.text || '[Mensagem não suportada]';
+        await this.saveMessage(conversation.id, 'user', processedMessage, {
+          raw_message: message,
+          whatsapp_message_id: key.id
+        });
+        
+        return;
+      }
 
       // Create or get conversation
       const conversation = await this.getOrCreateConversation(
@@ -120,39 +159,76 @@ const messageService = {
   },
 
   async getOrCreateConversation(companyId, contact, contactName) {
-    const { data: existing } = await supabase
-      .from('conversations')
-      .select('*')
-      .eq('company_id', companyId)
-      .eq('contact', contact)
-      .single();
+    try {
+      const { data: existing, error: findError } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('contact', contact)
+        .single();
 
-    if (existing) return existing;
+      if (existing && !findError) {
+        logger.info(`💬 Found existing conversation: ${existing.id}`);
+        return existing;
+      }
 
-    const { data: newConversation } = await supabase
-      .from('conversations')
-      .insert({
-        company_id: companyId,
-        contact,
-        contact_name: contactName,
-        status: 'active'
-      })
-      .select()
-      .single();
+      logger.info(`🆕 Creating new conversation for contact: ${contact}`);
+      
+      const { data: newConversation, error: createError } = await supabase
+        .from('conversations')
+        .insert({
+          company_id: companyId,
+          contact,
+          contact_name: contactName,
+          contact_phone: contact, // For WhatsApp, contact is the phone number
+          platform: 'whatsapp',
+          status: 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
 
-    return newConversation;
+      if (createError) {
+        logger.error('Error creating conversation:', createError);
+        throw createError;
+      }
+
+      logger.info(`✅ Created conversation: ${newConversation.id}`);
+      return newConversation;
+    } catch (error) {
+      logger.error('Error in getOrCreateConversation:', error);
+      throw error;
+    }
   },
 
   async saveMessage(conversationId, role, content, metadata = null) {
-    await supabase
-      .from('messages')
-      .insert({
-        conversation_id: conversationId,
-        role,
-        content,
-        metadata,
-        timestamp: new Date().toISOString()
-      });
+    try {
+      logger.info(`💾 Saving ${role} message for conversation ${conversationId}: ${content.substring(0, 100)}...`);
+      
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          role,
+          content,
+          metadata,
+          timestamp: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) {
+        logger.error('Error saving message:', error);
+        throw error;
+      }
+
+      logger.info(`✅ Message saved with ID: ${data.id}`);
+      return data;
+    } catch (error) {
+      logger.error('Error in saveMessage:', error);
+      throw error;
+    }
   },
 
   /**

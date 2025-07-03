@@ -12,18 +12,54 @@ const evolutionService = {
 
   async createInstance(instanceName, companyId) {
     try {
-      const response = await this.client.post('/instance/create', {
+      // Step 1: Create instance
+      const createResponse = await this.client.post('/instance/create', {
         instanceName,
         integration: 'WHATSAPP-BAILEYS',
         reject_call: true,
-        msg_call: 'Desculpe, não posso atender chamadas.',
-        webhook: `${process.env.WEBHOOK_BASE_URL}/webhook/evolution/${instanceName}`
+        msg_call: 'Desculpe, não posso atender chamadas.'
       });
 
       logger.info(`✅ Evolution instance created: ${instanceName}`);
-      return response.data;
+
+      // Step 2: Configure webhook
+      const webhookUrl = `${process.env.WEBHOOK_BASE_URL || 'https://backend-api-final-production.up.railway.app'}/api/webhook/evolution/${instanceName}`;
+      
+      await this.configureWebhook(instanceName, webhookUrl);
+      
+      return createResponse.data;
     } catch (error) {
       logger.error('Error creating Evolution instance:', error);
+      throw error;
+    }
+  },
+
+  async configureWebhook(instanceName, webhookUrl) {
+    try {
+      const webhookConfig = {
+        webhook: {
+          url: webhookUrl,
+          events: [
+            'APPLICATION_STARTUP',
+            'QRCODE_UPDATED',
+            'CONNECTION_UPDATE',
+            'MESSAGES_UPSERT',
+            'MESSAGES_UPDATE',
+            'SEND_MESSAGE'
+          ],
+          webhook_by_events: false,
+          webhook_base64: false
+        }
+      };
+
+      const response = await this.client.post(`/webhook/set/${instanceName}`, webhookConfig);
+      
+      logger.info(`✅ Webhook configured for ${instanceName}: ${webhookUrl}`);
+      logger.info(`Webhook response:`, response.data);
+      
+      return response.data;
+    } catch (error) {
+      logger.error('Error configuring webhook:', error);
       throw error;
     }
   },
@@ -105,13 +141,20 @@ const evolutionService = {
     try {
       const endpoint = messageData.audio ? '/message/sendAudio' : '/message/sendText';
       
+      logger.info(`📤 Sending message via ${endpoint} to ${instanceName}:`, {
+        type: messageData.audio ? 'audio' : 'text',
+        number: messageData.number,
+        hasContent: !!messageData.text || !!messageData.audio
+      });
+      
       const response = await this.client.post(`${endpoint}/${instanceName}`, {
         ...messageData
       });
 
+      logger.info(`✅ Message sent successfully:`, response.data);
       return response.data;
     } catch (error) {
-      logger.error('Error sending message:', error);
+      logger.error(`❌ Failed to send message to ${instanceName}:`, error.response?.data || error.message);
       throw error;
     }
   },

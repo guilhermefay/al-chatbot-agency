@@ -42,6 +42,7 @@ interface Company {
   features: any;
   dify_api_key: string;
   dify_app_id: string;
+  dify_enabled: boolean;
   whatsapp_sessions?: any[];
   conversations?: any[];
   tools_config?: any[];
@@ -50,13 +51,16 @@ interface Company {
 
 interface Conversation {
   id: string;
-  contact_name: string;
-  contact_phone: string;
+  contact: string;
+  contact_name?: string;
+  contact_phone?: string;
   platform: string;
   status: string;
-  last_message: string;
-  last_message_at: string;
-  messages_count: number;
+  last_message?: string;
+  last_message_at?: string;
+  created_at: string;
+  updated_at: string;
+  message_count?: number;
 }
 
 export default function CompanyDetailsPage() {
@@ -165,22 +169,32 @@ export default function CompanyDetailsPage() {
 
   const fetchConversations = async () => {
     try {
+      console.log('🔍 Fetching conversations for company:', id);
+      
       const { data, error } = await supabase
         .from('conversations')
         .select(`
           id,
+          contact,
           contact_name,
           contact_phone,
           platform,
           status,
           last_message,
-          last_message_at
+          last_message_at,
+          created_at,
+          updated_at
         `)
         .eq('company_id', id)
-        .order('last_message_at', { ascending: false })
+        .order('last_message_at', { ascending: false, nullsLast: true })
         .limit(20);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error fetching conversations:', error);
+        throw error;
+      }
+
+      console.log(`📋 Found ${data?.length || 0} conversations:`, data);
 
       // Buscar contagem de mensagens separadamente para cada conversa
       const conversationsWithCount = await Promise.all(
@@ -466,6 +480,30 @@ export default function CompanyDetailsPage() {
     }
   };
 
+  const toggleDifyEnabled = async (enabled: boolean) => {
+    try {
+      setSaving(true);
+      
+      const { error } = await supabase
+        .from('companies')
+        .update({
+          dify_enabled: enabled,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      await fetchCompanyDetails();
+      
+      console.log(`✅ Dify ${enabled ? 'habilitado' : 'desabilitado'} para ${company?.name}`);
+    } catch (error) {
+      console.error('Error toggling Dify:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -582,12 +620,29 @@ export default function CompanyDetailsPage() {
             {/* Dify AI Integration */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Bot className="h-5 w-5 mr-2 text-blue-600" />
-                  Dify AI - Chatbot
-                  {company.dify_api_key && (
-                    <CheckCircle className="h-4 w-4 ml-2 text-green-600" />
-                  )}
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Bot className="h-5 w-5 mr-2 text-blue-600" />
+                    Dify AI - Chatbot
+                    {company.dify_api_key && (
+                      <CheckCircle className="h-4 w-4 ml-2 text-green-600" />
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className={`text-sm ${company.dify_enabled ? 'text-green-600' : 'text-gray-500'}`}>
+                      {company.dify_enabled ? 'Ativo' : 'Inativo'}
+                    </span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={company.dify_enabled || false}
+                        onChange={(e) => toggleDifyEnabled(e.target.checked)}
+                        disabled={saving}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
                 </CardTitle>
                 <CardDescription>
                   Configure a IA conversacional do chatbot
@@ -1056,7 +1111,7 @@ export default function CompanyDetailsPage() {
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
-                          <h4 className="font-medium">{conversation.contact_name || conversation.contact_phone}</h4>
+                          <h4 className="font-medium">{conversation.contact_name || conversation.contact || 'Contato'}</h4>
                           <Badge variant="outline" className="text-xs">
                             {conversation.platform || 'WhatsApp'}
                           </Badge>
@@ -1069,7 +1124,7 @@ export default function CompanyDetailsPage() {
                           </Badge>
                         </div>
                         <p className="text-gray-600 text-sm mb-2">
-                          {conversation.contact_phone || conversation.contact_name}
+                          📱 {conversation.contact_phone || conversation.contact}
                         </p>
                         <p className="text-gray-800 text-sm line-clamp-2">
                           {conversation.last_message || 'Nenhuma mensagem ainda'}
@@ -1083,7 +1138,7 @@ export default function CompanyDetailsPage() {
                           }
                         </div>
                         <div className="text-xs mt-1">
-                          {conversation.messages_count || 0} mensagens
+                          {conversation.message_count || 0} mensagens
                         </div>
                         <Button 
                           size="sm" 
