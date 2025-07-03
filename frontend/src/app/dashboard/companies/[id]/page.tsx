@@ -407,7 +407,7 @@ export default function CompanyDetailsPage() {
     setConversationId(null);
   };
 
-  const updateCompanyFeatures = async (newFeatures) => {
+  const updateCompanyFeatures = async (newFeatures: any) => {
     try {
       setSaving(true);
       
