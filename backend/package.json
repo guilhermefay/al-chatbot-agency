@@ -7,7 +7,10 @@
     "dev": "nodemon src/server.js",
     "build": "echo 'No build step required for Node.js backend'",
     "start": "node src/server.js",
-    "test": "jest"
+    "test": "jest",
+    "syntax-check": "node -c src/server.js && find src -name '*.js' -exec node -c {} \\;",
+    "validate": "npm run syntax-check",
+    "start:safe": "npm run validate && npm start"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
