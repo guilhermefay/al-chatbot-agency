@@ -3,6 +3,7 @@ const { supabase } = require('../config/supabase');
 const { evolutionService } = require('./evolution.service');
 const { difyService } = require('./dify.service');
 const { audioService } = require('./audio.service');
+const { messageChunkerService } = require('./messageChunker.service');
 
 const messageService = {
   async handleIncomingMessage(instanceId, messageData) {
@@ -41,7 +42,13 @@ const messageService = {
       if (message.audioMessage) {
         logger.info('Processing audio message');
         const audioUrl = await evolutionService.getMediaUrl(instanceId, message.audioMessage.url);
-        processedMessage = await audioService.transcribeAudio(audioUrl);
+        const audioBuffer = await audioService.downloadAudio(audioUrl);
+        processedMessage = await audioService.transcribeAudio(
+          audioBuffer, 
+          companyData.dify_api_key, 
+          contact
+        );
+        logger.info(`Audio transcribed: ${processedMessage}`);
       }
 
       // Save incoming message
@@ -72,30 +79,40 @@ const messageService = {
         usage: difyResponse.usage
       });
 
-      // Send response
-      let responseData;
-      if (companyData.features?.voice_enabled && !message.audioMessage) {
-        // Text response for text input
-        responseData = {
-          number: key.remoteJid,
-          text: difyResponse.answer
-        };
-      } else if (message.audioMessage && companyData.features?.voice_enabled) {
-        // Audio response for audio input
-        const audioUrl = await audioService.textToSpeech(difyResponse.answer, companyData.voice_config);
-        responseData = {
-          number: key.remoteJid,
-          audio: audioUrl
-        };
+      // Process response for sending
+      const shouldRespondWithAudio = companyData.features?.voice_enabled && 
+                                     (message.audioMessage || companyData.voice_config?.always_voice);
+      
+      if (shouldRespondWithAudio) {
+        try {
+          // Generate audio response using Dify TTS
+          const audioBuffer = await audioService.textToSpeech(
+            difyResponse.answer,
+            companyData.dify_api_key,
+            difyResponse.message_id,
+            contact
+          );
+          
+          // Convert buffer to base64 for WhatsApp
+          const audioBase64 = audioBuffer.toString('base64');
+          
+          // Send audio (single message, no chunking for audio)
+          await evolutionService.sendMessage(instanceId, {
+            number: key.remoteJid,
+            audio: audioBase64,
+            mimetype: 'audio/ogg; codecs=opus'
+          });
+          
+          logger.info('Sent audio response via TTS');
+        } catch (audioError) {
+          logger.warn('TTS failed, falling back to chunked text:', audioError);
+          // Fallback to chunked text if TTS fails
+          await this.sendChunkedTextResponse(instanceId, key.remoteJid, difyResponse.answer, companyData);
+        }
       } else {
-        // Default text response
-        responseData = {
-          number: key.remoteJid,
-          text: difyResponse.answer
-        };
+        // Send chunked text response
+        await this.sendChunkedTextResponse(instanceId, key.remoteJid, difyResponse.answer, companyData);
       }
-
-      await evolutionService.sendMessage(instanceId, responseData);
 
     } catch (error) {
       logger.error('Error handling incoming message:', error);
@@ -136,6 +153,65 @@ const messageService = {
         metadata,
         timestamp: new Date().toISOString()
       });
+  },
+
+  /**
+   * Envia resposta de texto com chunking automático
+   */
+  async sendChunkedTextResponse(instanceId, remoteJid, message, companyData) {
+    try {
+      // Analisa se a mensagem deve ser quebrada
+      const analysis = messageChunkerService.analyzeMessage(message, {
+        message_chunk_size: companyData.features?.message_chunk_size || 280,
+        enable_message_chunking: companyData.features?.enable_message_chunking !== false
+      });
+
+      if (!analysis.shouldChunk) {
+        // Mensagem única
+        await evolutionService.sendMessage(instanceId, {
+          number: remoteJid,
+          text: message
+        });
+        
+        logger.info(`Sent single message: ${message.substring(0, 50)}...`);
+      } else {
+        // Mensagens múltiplas com delay
+        logger.info(`Breaking message into ${analysis.chunks.length} chunks`);
+        
+        const sendFunction = async (data) => {
+          return evolutionService.sendMessage(instanceId, data);
+        };
+
+        await messageChunkerService.sendChunkedMessages(
+          analysis.chunks,
+          sendFunction,
+          { number: remoteJid },
+          {
+            enableTypingIndicator: companyData.features?.typing_indicator !== false,
+            customDelay: companyData.features?.chunk_delay || null,
+            strategy: companyData.features?.chunking_strategy || 'natural',
+            metadata: analysis.metadata,
+            showProgress: analysis.chunkCount > 3
+          }
+        );
+        
+        logger.info(`Sent ${analysis.chunks.length} chunked messages successfully`);
+      }
+    } catch (error) {
+      logger.error('Error sending chunked text response:', error);
+      
+      // Fallback: enviar mensagem original sem chunking
+      try {
+        await evolutionService.sendMessage(instanceId, {
+          number: remoteJid,
+          text: message
+        });
+        logger.info('Fallback: sent original message without chunking');
+      } catch (fallbackError) {
+        logger.error('Fallback also failed:', fallbackError);
+        throw fallbackError;
+      }
+    }
   }
 };
 

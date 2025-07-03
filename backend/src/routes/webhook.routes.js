@@ -8,4 +8,7 @@ router.post('/evolution/:instanceId', webhookController.handleEvolutionWebhook);
 // Dify webhook for tool callbacks
 router.post('/dify/tools/:toolId', webhookController.handleDifyToolCallback);
 
+// Dify Function Calling endpoint
+router.post('/dify/function/:companyId', webhookController.handleDifyFunctionCall);
+
 module.exports = router;

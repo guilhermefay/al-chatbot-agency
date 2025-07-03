@@ -407,6 +407,56 @@ export default function CompanyDetailsPage() {
     setConversationId(null);
   };
 
+  const updateCompanyFeatures = async (newFeatures) => {
+    try {
+      setSaving(true);
+      
+      const { error } = await supabase
+        .from('companies')
+        .update({
+          features: {
+            ...company.features,
+            ...newFeatures
+          },
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      await fetchCompanyDetails();
+    } catch (error) {
+      console.error('Error updating company features:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateVoiceConfig = async (newVoiceConfig) => {
+    try {
+      setSaving(true);
+      
+      const { error } = await supabase
+        .from('companies')
+        .update({
+          voice_config: {
+            ...company.voice_config,
+            ...newVoiceConfig
+          },
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      await fetchCompanyDetails();
+    } catch (error) {
+      console.error('Error updating voice config:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -561,7 +611,7 @@ export default function CompanyDetailsPage() {
               </CardContent>
             </Card>
 
-            {/* WhatsApp Integration */}
+            {/* WhatsApp Integration with Voice */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -572,7 +622,7 @@ export default function CompanyDetailsPage() {
                   )}
                 </CardTitle>
                 <CardDescription>
-                  Conecte via QR Code para receber mensagens
+                  Conecte via QR Code para receber mensagens e configure recursos de voz
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -593,6 +643,104 @@ export default function CompanyDetailsPage() {
                       <RefreshCw className="h-4 w-4 mr-2" />
                       Atualizar Status
                     </Button>
+                    
+                    {/* Voice Configuration */}
+                    <div className="mt-4 pt-4 border-t">
+                      <h4 className="font-medium mb-3">🎤 Configurações de Voz</h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="voice-enabled"
+                            checked={company?.features?.voice_enabled || false}
+                            onChange={(e) => updateCompanyFeatures({ voice_enabled: e.target.checked })}
+                          />
+                          <Label htmlFor="voice-enabled">Ativar respostas por voz</Label>
+                        </div>
+                        
+                        {company?.features?.voice_enabled && (
+                          <div className="space-y-2 ml-6">
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id="always-voice"
+                                checked={company?.voice_config?.always_voice || false}
+                                onChange={(e) => updateVoiceConfig({ always_voice: e.target.checked })}
+                              />
+                              <Label htmlFor="always-voice" className="text-sm">Sempre responder com voz</Label>
+                            </div>
+                            <p className="text-xs text-gray-500 ml-6">
+                              Se desabilitado, só responde com voz quando cliente enviar áudio
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Message Chunking Configuration */}
+                    <div className="mt-4 pt-4 border-t">
+                      <h4 className="font-medium mb-3">💬 Configurações de Mensagens</h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="message-chunking"
+                            checked={company?.features?.enable_message_chunking !== false}
+                            onChange={(e) => updateCompanyFeatures({ enable_message_chunking: e.target.checked })}
+                          />
+                          <Label htmlFor="message-chunking">Quebrar mensagens longas</Label>
+                        </div>
+                        <p className="text-xs text-gray-500 ml-6">
+                          Mensagens longas do AI serão divididas em pedaços menores com delay entre elas
+                        </p>
+                        
+                        {company?.features?.enable_message_chunking !== false && (
+                          <div className="space-y-3 ml-6">
+                            <div>
+                              <Label htmlFor="chunk-size" className="text-sm">Tamanho máximo por mensagem</Label>
+                              <Input
+                                id="chunk-size"
+                                type="number"
+                                min="100"
+                                max="1000"
+                                value={company?.features?.message_chunk_size || 280}
+                                onChange={(e) => updateCompanyFeatures({ message_chunk_size: parseInt(e.target.value) })}
+                                className="mt-1 w-24"
+                              />
+                              <p className="text-xs text-gray-500 mt-1">
+                                Padrão: 280 caracteres (recomendado)
+                              </p>
+                            </div>
+                            
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id="typing-indicator"
+                                checked={company?.features?.typing_indicator !== false}
+                                onChange={(e) => updateCompanyFeatures({ typing_indicator: e.target.checked })}
+                              />
+                              <Label htmlFor="typing-indicator" className="text-sm">Mostrar "digitando..."</Label>
+                            </div>
+                            
+                            <div>
+                              <Label htmlFor="chunk-delay" className="text-sm">Delay entre mensagens (segundos)</Label>
+                              <Input
+                                id="chunk-delay"
+                                type="number"
+                                min="1"
+                                max="10"
+                                value={(company?.features?.chunk_delay || 2000) / 1000}
+                                onChange={(e) => updateCompanyFeatures({ chunk_delay: parseInt(e.target.value) * 1000 })}
+                                className="mt-1 w-20"
+                              />
+                              <p className="text-xs text-gray-500 mt-1">
+                                Padrão: 2 segundos
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="text-center py-4">
@@ -746,6 +894,99 @@ export default function CompanyDetailsPage() {
                   <Save className="h-4 w-4 mr-2" />
                   {saving ? 'Salvando...' : 'Salvar'}
                 </Button>
+              </CardContent>
+            </Card>
+
+            {/* AI Functions Configuration */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Bot className="h-5 w-5 mr-2 text-purple-600" />
+                  🧠 Funções de IA
+                  <Badge variant="outline" className="ml-2 text-xs">Dify Function Calling</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Configure que ações o bot pode executar automaticamente
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  
+                  {/* Google Calendar Function */}
+                  <div className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="h-4 w-4 text-purple-600" />
+                        <span className="font-medium">Agendamento</span>
+                      </div>
+                      <Badge className={`text-xs ${
+                        calendarConfig.enabled 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {calendarConfig.enabled ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Bot pode verificar disponibilidade e agendar reuniões automaticamente
+                    </p>
+                    <div className="text-xs text-gray-500">
+                      <strong>Exemplos:</strong>
+                      <ul className="mt-1 space-y-1">
+                        <li>• "Agenda reunião sexta 14h"</li>
+                        <li>• "Que horários tenho livre amanhã?"</li>
+                        <li>• "Cancela reunião das 15h"</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* CRM Function */}
+                  <div className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-2">
+                        <Users className="h-4 w-4 text-orange-600" />
+                        <span className="font-medium">CRM</span>
+                      </div>
+                      <Badge className={`text-xs ${
+                        crmConfig.enabled 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {crmConfig.enabled ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Bot pode criar leads e gerenciar contatos no CRM
+                    </p>
+                    <div className="text-xs text-gray-500">
+                      <strong>Exemplos:</strong>
+                      <ul className="mt-1 space-y-1">
+                        <li>• "Adiciona João como lead"</li>
+                        <li>• "Busca contato Maria Silva"</li>
+                        <li>• "Atualiza dados do cliente"</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                </div>
+
+                <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                  <div className="flex items-start space-x-3">
+                    <Bot className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-blue-900">Como Configurar no Dify</h4>
+                      <p className="text-sm text-blue-700 mt-1">
+                        Para ativar essas funções, configure as Tools no seu app Dify com o endpoint:
+                      </p>
+                      <code className="block mt-2 p-2 bg-blue-100 rounded text-xs font-mono text-blue-800">
+                        {API_BASE_URL}/webhook/dify/function/{id}
+                      </code>
+                      <p className="text-xs text-blue-600 mt-2">
+                        ✅ Functions: google_calendar, crm, send_email
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>

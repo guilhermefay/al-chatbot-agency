@@ -14,11 +14,16 @@ import {
   MoreVertical, 
   Paperclip,
   Mic,
+  MicOff,
+  Play,
+  Pause,
+  Volume2,
   Check,
   CheckCheck,
   Clock,
   Bot,
-  User
+  User,
+  Square
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
@@ -32,6 +37,8 @@ interface Message {
   timestamp: string;
   metadata?: any;
   status?: 'sending' | 'sent' | 'delivered' | 'read';
+  audio_url?: string;
+  is_audio?: boolean;
 }
 
 interface Conversation {
@@ -60,6 +67,17 @@ export default function ConversationDetailPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Audio states
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   
   const supabase = createClient();
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend-api-final-production.up.railway.app/api';
@@ -214,6 +232,155 @@ export default function ConversationDetailPage() {
     });
   };
 
+  // Audio recording functions
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: { 
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } 
+      });
+      
+      audioStreamRef.current = stream;
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      
+      const chunks: BlobPart[] = [];
+      
+      mediaRecorder.ondataavailable = (event) => {
+        chunks.push(event.data);
+      };
+      
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        setAudioBlob(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      
+      // Start recording timer
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      alert('Erro ao acessar o microfone. Verifique as permissões.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+        recordingIntervalRef.current = null;
+      }
+      
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+    }
+  };
+
+  const sendAudioMessage = async () => {
+    if (!audioBlob) return;
+    
+    setIsTranscribing(true);
+    setSending(true);
+    
+    try {
+      // Convert blob to base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Audio = reader.result as string;
+        const audioData = base64Audio.split(',')[1]; // Remove data:audio/webm;base64, prefix
+        
+        // Send audio message via API
+        const response = await fetch(`${API_BASE_URL}/conversations/${id}/messages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            audio: audioData,
+            mimetype: 'audio/webm',
+            role: 'user'
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to send audio message');
+        }
+        
+        // Clear audio states
+        setAudioBlob(null);
+        setRecordingTime(0);
+      };
+      
+      reader.readAsDataURL(audioBlob);
+      
+    } catch (error) {
+      console.error('Error sending audio message:', error);
+      alert('Erro ao enviar mensagem de áudio');
+    } finally {
+      setIsTranscribing(false);
+      setSending(false);
+    }
+  };
+
+  const playAudio = async (audioUrl: string, messageId: string) => {
+    if (playingAudio === messageId) {
+      // Stop current audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      setPlayingAudio(null);
+      return;
+    }
+    
+    try {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      
+      audio.onended = () => {
+        setPlayingAudio(null);
+        audioRef.current = null;
+      };
+      
+      audio.onerror = () => {
+        console.error('Error playing audio');
+        setPlayingAudio(null);
+        audioRef.current = null;
+      };
+      
+      setPlayingAudio(messageId);
+      await audio.play();
+      
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      setPlayingAudio(null);
+    }
+  };
+
+  const formatRecordingTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -326,9 +493,30 @@ export default function ConversationDetailPage() {
                     </div>
                   )}
                   
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                    {message.content}
-                  </p>
+                  {message.is_audio && message.audio_url ? (
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        onClick={() => playAudio(message.audio_url!, message.id)}
+                        variant="ghost"
+                        size="sm"
+                        className={`p-1 ${isUser ? 'text-white hover:bg-blue-600' : 'text-blue-500 hover:bg-blue-50'}`}
+                      >
+                        {playingAudio === message.id ? (
+                          <Pause className="h-4 w-4" />
+                        ) : (
+                          <Play className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Volume2 className={`h-3 w-3 ${isUser ? 'text-white' : 'text-gray-500'}`} />
+                      <span className={`text-xs ${isUser ? 'text-white' : 'text-gray-500'}`}>
+                        Áudio
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                      {message.content}
+                    </p>
+                  )}
                   
                   <div className={`flex items-center justify-end space-x-1 mt-1 ${
                     isUser ? 'text-blue-100' : 'text-gray-500'
@@ -348,6 +536,76 @@ export default function ConversationDetailPage() {
 
       {/* Input */}
       <div className="bg-white border-t p-4">
+        {/* Recording interface */}
+        {(isRecording || audioBlob) && (
+          <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                {isRecording ? (
+                  <>
+                    <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm font-medium text-gray-700">
+                      Gravando: {formatRecordingTime(recordingTime)}
+                    </span>
+                  </>
+                ) : audioBlob ? (
+                  <>
+                    <Volume2 className="h-4 w-4 text-blue-500" />
+                    <span className="text-sm font-medium text-gray-700">
+                      Áudio gravado ({formatRecordingTime(recordingTime)})
+                    </span>
+                  </>
+                ) : null}
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                {isRecording ? (
+                  <Button 
+                    onClick={stopRecording}
+                    size="sm"
+                    variant="destructive"
+                  >
+                    <Square className="h-4 w-4 mr-1" />
+                    Parar
+                  </Button>
+                ) : audioBlob ? (
+                  <>
+                    <Button 
+                      onClick={() => {
+                        setAudioBlob(null);
+                        setRecordingTime(0);
+                      }}
+                      size="sm"
+                      variant="outline"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      onClick={sendAudioMessage}
+                      disabled={isTranscribing || sending}
+                      size="sm"
+                      className="bg-blue-500 hover:bg-blue-600"
+                    >
+                      {isTranscribing ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                          Processando...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4 mr-1" />
+                          Enviar
+                        </>
+                      )}
+                    </Button>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Standard input */}
         <div className="flex items-center space-x-3">
           <Button variant="ghost" size="sm" className="text-gray-500">
             <Paperclip className="h-4 w-4" />
@@ -360,9 +618,9 @@ export default function ConversationDetailPage() {
               onKeyPress={handleKeyPress}
               placeholder="Digite uma mensagem..."
               className="pr-12 rounded-full border-gray-300 focus:border-blue-500"
-              disabled={sending}
+              disabled={sending || isRecording || audioBlob !== null}
             />
-            {newMessage.trim() && (
+            {newMessage.trim() && !isRecording && !audioBlob && (
               <Button
                 onClick={sendMessage}
                 disabled={sending}
@@ -374,8 +632,13 @@ export default function ConversationDetailPage() {
             )}
           </div>
           
-          {!newMessage.trim() && (
-            <Button variant="ghost" size="sm" className="text-gray-500">
+          {!newMessage.trim() && !isRecording && !audioBlob && (
+            <Button 
+              onClick={startRecording}
+              variant="ghost" 
+              size="sm" 
+              className="text-gray-500 hover:text-blue-500 hover:bg-blue-50"
+            >
               <Mic className="h-4 w-4" />
             </Button>
           )}

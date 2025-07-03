@@ -199,7 +199,7 @@ const conversationController = {
   async sendMessage(req, res) {
     try {
       const { id } = req.params;
-      const { content, role } = req.body;
+      const { content, role, audio, mimetype } = req.body;
 
       // Buscar conversa
       const { data: conversation, error: convError } = await supabase
@@ -212,13 +212,41 @@ const conversationController = {
         return res.status(404).json({ error: 'Conversa não encontrada' });
       }
 
+      let messageContent = content;
+      let isAudio = false;
+
+      // Se for mensagem de áudio, processar com Dify transcription
+      if (audio && mimetype && role === 'user') {
+        const { audioService } = require('../services/audio.service');
+        
+        try {
+          // Convert base64 to buffer
+          const audioBuffer = Buffer.from(audio, 'base64');
+          
+          // Transcribe with Dify
+          messageContent = await audioService.transcribeAudio(
+            audioBuffer, 
+            conversation.companies.dify_api_key, 
+            conversation.contact
+          );
+          
+          isAudio = true;
+          logger.info(`Audio transcribed: ${messageContent}`);
+        } catch (audioError) {
+          logger.error('Error transcribing audio:', audioError);
+          return res.status(400).json({ error: 'Erro ao processar áudio' });
+        }
+      }
+
       // Salvar mensagem no banco
       const { data: savedMessage, error: saveError } = await supabase
         .from('messages')
         .insert({
           conversation_id: id,
           role,
-          content,
+          content: messageContent,
+          is_audio: isAudio,
+          metadata: isAudio ? { original_audio: true, mimetype } : null,
           timestamp: new Date().toISOString()
         })
         .select()
@@ -237,8 +265,13 @@ const conversationController = {
             fromMe: false,
             id: `mock_${Date.now()}`
           },
-          message: {
-            conversation: content
+          message: isAudio ? {
+            audioMessage: {
+              url: `data:${mimetype};base64,${audio}`,
+              mimetype: mimetype
+            }
+          } : {
+            conversation: messageContent
           },
           pushName: conversation.contact_name || conversation.contact
         };
@@ -250,7 +283,7 @@ const conversationController = {
         }
       }
 
-      logger.info(`Mensagem enviada para conversa ${id}: ${role} - ${content}`);
+      logger.info(`Mensagem enviada para conversa ${id}: ${role} - ${isAudio ? 'audio' : messageContent}`);
       
       res.status(201).json({
         success: true,

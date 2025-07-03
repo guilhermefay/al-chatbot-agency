@@ -15,11 +15,16 @@ router.get('/:id/messages', conversationController.getConversationMessages);
 router.post('/:id/messages', validateRequest({
   body: {
     type: 'object',
-    required: ['content', 'role'],
     properties: {
       content: { type: 'string', minLength: 1, maxLength: 5000 },
-      role: { type: 'string', enum: ['user', 'assistant'] }
-    }
+      role: { type: 'string', enum: ['user', 'assistant'] },
+      audio: { type: 'string' }, // base64 audio data
+      mimetype: { type: 'string' } // audio mimetype
+    },
+    anyOf: [
+      { required: ['content', 'role'] },
+      { required: ['audio', 'mimetype', 'role'] }
+    ]
   }
 }), conversationController.sendMessage);
 
