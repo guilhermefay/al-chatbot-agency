@@ -9,9 +9,5 @@
     "start": "cd frontend && npm run start",
     "install-frontend": "cd frontend && npm install",
     "install-backend": "cd backend && npm install"
-  },
-  "workspaces": [
-    "frontend",
-    "backend"
-  ]
+  }
 } 
