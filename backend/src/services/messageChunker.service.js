@@ -273,7 +273,7 @@ const messageChunkerService = {
         delay: this.calculateSmartDelay(currentChunk, contentType, strategy)
       });
     }
-  }
+  },
 
   /**
    * Calcula delay inteligente baseado no conteúdo e estratégia
