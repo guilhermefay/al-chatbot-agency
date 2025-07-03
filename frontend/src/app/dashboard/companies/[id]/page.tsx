@@ -60,7 +60,7 @@ export default function CompanyDetailsPage() {
   const { id } = params;
   
   // FORÇAR URL ABSOLUTA - CORREÇÃO TEMPORÁRIA v2
-  const API_BASE_URL = 'https://backend-api-new-production.up.railway.app/api';
+  const API_BASE_URL = 'https://backend-api-final-production.up.railway.app/api';
   console.log('🔥 FORÇANDO API_BASE_URL v2:', API_BASE_URL);
   alert('🔥 FORÇANDO URL v2: ' + API_BASE_URL);
   
