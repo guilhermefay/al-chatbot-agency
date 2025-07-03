@@ -441,6 +441,10 @@ export default function CompanyDetailsPage() {
     try {
       setSaving(true);
       
+      if (!company) {
+        throw new Error('Company not found');
+      }
+      
       const { error } = await supabase
         .from('companies')
         .update({
@@ -1054,7 +1058,7 @@ export default function CompanyDetailsPage() {
                           </Badge>
                         </div>
                         <p className="text-gray-600 text-sm mb-2">
-                          {conversation.contact_phone || conversation.contact}
+                          {conversation.contact_phone || conversation.contact_name}
                         </p>
                         <p className="text-gray-800 text-sm line-clamp-2">
                           {conversation.last_message || 'Nenhuma mensagem ainda'}
