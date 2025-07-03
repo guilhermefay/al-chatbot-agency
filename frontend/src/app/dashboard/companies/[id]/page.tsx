@@ -186,7 +186,7 @@ export default function CompanyDetailsPage() {
           updated_at
         `)
         .eq('company_id', id)
-        .order('last_message_at', { ascending: false, nullsLast: true })
+        .order('last_message_at', { ascending: false, nullsFirst: false })
         .limit(20);
 
       if (error) {
