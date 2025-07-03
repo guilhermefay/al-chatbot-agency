@@ -415,7 +415,7 @@ export default function CompanyDetailsPage() {
         .from('companies')
         .update({
           features: {
-            ...company.features,
+            ...company?.features,
             ...newFeatures
           },
           updated_at: new Date().toISOString()
